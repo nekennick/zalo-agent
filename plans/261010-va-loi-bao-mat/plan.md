@@ -1,6 +1,6 @@
 # Vá lỗi bảo mật zalo-agent (review 10/10/2026)
 
-Trạng thái: **TA ĐÃ DUYỆT 10/10/2026**, điểm 2 đến 4 ở mục "Cần TA chốt" lấy theo đề xuất. Làm bước 1 tới 11; bước 12 (B1) dừng hỏi TA.
+Trạng thái: **TA ĐÃ DUYỆT 10/10/2026**, điểm 2 đến 4 ở mục "Cần TA chốt" lấy theo đề xuất. Làm bước 1 tới 11; bước 12 (B1) TA duyệt và đã vá 13/10/2026.
 
 Nguồn: review lần 1 (1 agent, 10/10 21:00); lần 2 (2 agent: bảo mật đầu vào và máy chủ; kiểm thử) ở mục B, C.
 Tổng: 19 lỗi (2 Cao: A1, B1; 9 Trung bình; 8 Thấp).
@@ -24,7 +24,7 @@ Hiện trạng test: `pnpm test` 2722/2722 pass, `pnpm typecheck` sạch.
 
 | # | Mức | Vị trí | Vấn đề | Cách sửa |
 |---|---|---|---|---|
-| B1 | **Cao** | Quyền thư mục ổ `F:\` (kế thừa) trên repo, `.env`, `data/accounts/*/credentials.enc`, `F:\Zalo-Logs` | Mọi user Windows đăng nhập được máy đều có quyền SỬA (`Authenticated Users:(M)`). Khóa giải mã nằm trong `.env` cạnh file cookie: user khác đọc được là chiếm nick Zalo; sửa `src/` thì tác vụ `zalo-agent` chạy code đó. `mode 0o600` vô tác dụng trên Windows. | Siết quyền (icacls bỏ kế thừa, chỉ TA + SYSTEM) cho repo và `F:\Zalo-Logs`. Đây là đổi cấu hình máy: **TA duyệt riêng lệnh trước khi chạy**. (Sau này: giữ khóa bằng DPAPI.) |
+| B1 | **Cao, ĐÃ VÁ 13/10/2026** | Quyền thư mục ổ `F:\` (kế thừa) trên repo, `.env`, `data/accounts/*/credentials.enc`, `F:\Zalo-Logs` | Mọi user Windows đăng nhập được máy đều có quyền SỬA (`Authenticated Users:(M)`). Khóa giải mã nằm trong `.env` cạnh file cookie: user khác đọc được là chiếm nick Zalo; sửa `src/` thì tác vụ `zalo-agent` chạy code đó. `mode 0o600` vô tác dụng trên Windows. | Đã làm 13/10/2026: bỏ kế thừa trên thư mục repo và thư mục log, cùng vài thư mục dữ liệu riêng khác; gỡ `Authenticated Users` và `Users`; cấp thẳng cho tài khoản chủ máy vì tác vụ chạy ở mức Limited nên quyền nhóm Administrators bị lọc. Giờ chỉ chủ máy và SYSTEM đọc được. Đã kiểm bot vẫn chạy và vẫn ghi log sau khi đổi. (Sau này: giữ khóa bằng DPAPI.) |
 | B2 | Trung bình | `src/zalo/read-only-attachments.ts:72,87`, `zalo-message-parser.ts:153` | Người lạ gửi "video" có URL tùy ý kèm tên `hoa-don.hta`: bot tự tải về `tep/` đúng đuôi `.hta/.bat/.lnk/.html`, không gắn dấu "tải từ Internet", hướng dẫn AI còn bảo "mở được trực tiếp". Đồng thời lộ IP nhà TA. | Chỉ tải từ host CDN Zalo (đối chiếu log thật); allowlist đuôi an toàn (ảnh, office, pdf, mp4, m4a, aac, amr...), còn lại đổi `.bin`; ghi `Zone.Identifier` (ZoneId=3). |
 | B3 | Trung bình | `src/shared/safe-remote-download.ts:217`, `read-only-attachments.ts:72`, `read-only-chat-log.ts:51` | Tải tệp không có hạn tổng: server nhỏ giọt 1 byte/phút treo hàng ghi log của cả nhóm; mã tin cuối đã tiến lên trước nên restart không tải bù được, tin mất hẳn. Không có hạn mức dung lượng, ổ F có thể đầy. | `AbortSignal.timeout` tổng; ghi dòng log TRƯỚC, tải tệp sau; hạn mức MB theo ngày và theo người gửi. |
 | B4 | Trung bình | `src/zalo/friend-auto-accept-sweep.ts:37` | Vòng tự chấp nhận kết bạn không kiểm `readOnly` (hiện đang tắt trong DB nên chưa xảy ra). | `if (cfg.readOnly) continue;` và route PATCH account từ chối bật cả hai. |
