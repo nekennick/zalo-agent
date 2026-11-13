@@ -5,7 +5,8 @@ import { getAgentForAccount } from "../config/agent-store.js";
 import { isSidecarConfigured } from "../config/runtime-vision-settings.js";
 import { getRecentMessages } from "../conversation/history-store.js";
 import { getMemoriesForContext } from "../conversation/memory-store.js";
-import { getThreadContextEpoch, getThreadSummary } from "../conversation/thread-store.js";
+import { getThreadContextEpoch, getThreadSummary, isThreadAdminShared } from "../conversation/thread-store.js";
+import { getAdminSharedContextForGroup } from "../conversation/admin-context-bridge.js";
 import { createLogger } from "../shared/logger.js";
 import { TECHNICAL_ERROR_REPLY } from "../zalo/send-reply-in-parts.js";
 import type { ParsedMessage } from "../zalo/zalo-message-parser.js";
@@ -246,6 +247,15 @@ export async function runAgentTurn({
         threadSummary: getThreadSummary(account.id, latest.threadId).summary,
       };
 
+  // Ngữ cảnh liên thông từ chat riêng của Admin (nếu nhóm bật chia sẻ)
+  const adminContext =
+    !isolated && latest.isGroup && isThreadAdminShared(account.id, latest.threadId)
+      ? getAdminSharedContextForGroup({
+          accountId: account.id,
+          allowlistUserIds: account.allowlist?.userIds,
+        })
+      : "";
+
   // `trace` do caller truyền vào và dùng chung cho MỌI lần chạy trong lượt: lượt
   // retry (glitch router) và lượt dựng lại không kèm pixel đều nối tiếp vào đó -
   // đúng lúc hỏng mới cần nhìn đủ cả hai lần chạy.
@@ -363,7 +373,7 @@ export async function runAgentTurn({
     const nguCanh = await ganTinChenVao(messages);
     // Tách `system` + `tools` ra biến để BẮT LẠI đúng thứ đã gửi, phục vụ dòng
     // hiệu chỉnh ký-tự/token ở cuối lượt (đếm ký tự sau khi trả lời, không chặn).
-    const heThong = buildSystemPrompt(agent, latest, memory, account, isolated);
+    const heThong = buildSystemPrompt(agent, latest, memory, account, isolated, adminContext);
     // Hai lớp lọc tool giao nhau: agent khai năng lực, account áp chính sách.
     // Thêm `isolated` lọc bớt tool không hợp với lượt theo lịch (add_reaction
     // không có msgId thật, read_image không có ảnh, save_memory chặn injection
@@ -506,7 +516,7 @@ export async function runAgentTurn({
             threadId: latest.threadId,
             contextEpoch,
           }),
-          system: buildSystemPrompt(agent, latest, memory, account, isolated),
+          system: buildSystemPrompt(agent, latest, memory, account, isolated, adminContext),
           messages: tinChot,
           maxOutputTokens: getTuning("LLM_MAX_OUTPUT_TOKENS"),
           maxRetries: 1,

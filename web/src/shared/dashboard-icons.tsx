@@ -288,3 +288,12 @@ export const IconTrash = (p: IconProps) => (
     <path d="M6.5 7l.8 11.2a2 2 0 0 0 2 1.8h5.4a2 2 0 0 0 2-1.8L17.5 7" />
   </svg>
 );
+
+export const IconQrCode = (p: IconProps) => (
+  <svg {...base(p)}>
+    <rect x="3" y="3" width="7" height="7" rx="1.5" />
+    <rect x="14" y="3" width="7" height="7" rx="1.5" />
+    <rect x="3" y="14" width="7" height="7" rx="1.5" />
+    <path d="M14 14h3v3h-3zM17 17h4v4h-4zM14 21h3M21 14v3" />
+  </svg>
+);

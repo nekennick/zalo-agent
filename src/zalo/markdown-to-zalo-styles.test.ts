@@ -83,14 +83,52 @@ describe("markdownSangStyleZalo - inline", () => {
 });
 
 describe("markdownSangStyleZalo - khối", () => {
-  it("tiêu đề thành to + đậm, dấu # biến mất", () => {
+  it("tiêu đề chính (##) thành to + đậm + xanh lá, dấu # biến mất", () => {
     const ket = markdownSangStyleZalo("## Bảng giá hôm nay");
     assert.equal(ket.text, "Bảng giá hôm nay");
     assert.deepEqual(
       ket.styles.map((s) => s.st).sort(),
-      [TextStyle.Big, TextStyle.Bold].sort(),
+      [TextStyle.Big, TextStyle.Bold, TextStyle.Green].sort(),
     );
     assert.equal(doanCua(ket, 0), "Bảng giá hôm nay");
+  });
+
+  it("tiêu đề mục con (###) thành to + đậm + cam", () => {
+    const ket = markdownSangStyleZalo("### 📦 Phân cảnh chuẩn bị");
+    assert.equal(ket.text, "📦 Phân cảnh chuẩn bị");
+    assert.deepEqual(
+      ket.styles.map((s) => s.st).sort(),
+      [TextStyle.Big, TextStyle.Bold, TextStyle.Orange].sort(),
+    );
+  });
+
+  it("nhấn mạnh *** thành Cam In Đậm", () => {
+    const ket = markdownSangStyleZalo("Từ khóa ***quan trọng nhất*** hôm nay");
+    assert.equal(ket.text, "Từ khóa quan trọng nhất hôm nay");
+    assert.deepEqual(
+      ket.styles.map((s) => s.st).sort(),
+      [TextStyle.Orange, TextStyle.Bold].sort(),
+    );
+    for (const s of ket.styles) {
+      assert.equal(ket.text.slice(s.start, s.start + s.len), "quan trọng nhất");
+    }
+  });
+
+  it("danh sách có nhãn - Tên nhãn: Nội dung tự động in đậm Tên nhãn", () => {
+    const ket = markdownSangStyleZalo("- Thời gian: 8h00 sáng\n- Địa điểm: Hà Nội");
+    assert.equal(ket.text, "- Thời gian: 8h00 sáng\n- Địa điểm: Hà Nội");
+    assert.equal(ket.styles.length, 2);
+    assert.equal(ket.styles[0]!.st, TextStyle.Bold);
+    assert.equal(ket.text.slice(ket.styles[0]!.start, ket.styles[0]!.start + ket.styles[0]!.len), "Thời gian");
+    assert.equal(ket.styles[1]!.st, TextStyle.Bold);
+    assert.equal(ket.text.slice(ket.styles[1]!.start, ket.styles[1]!.start + ket.styles[1]!.len), "Địa điểm");
+  });
+
+  it("dòng nhãn độc lập có dấu hai chấm ở cuối tự động in đậm", () => {
+    const ket = markdownSangStyleZalo("Lưu ý:\n- Không dùng bảng");
+    assert.equal(ket.text, "Lưu ý:\n- Không dùng bảng");
+    const dam = ket.styles.filter((s) => s.st === TextStyle.Bold);
+    assert.equal(ket.text.slice(dam[0]!.start, dam[0]!.start + dam[0]!.len), "Lưu ý");
   });
 
   it('gạch đầu dòng GIỮ NGUYÊN ký tự "- ", KHÔNG sinh style danh sách', () => {
@@ -118,11 +156,12 @@ describe("markdownSangStyleZalo - khối", () => {
 
   it("in đậm TRONG dòng danh sách vẫn tô đúng chỗ", () => {
     // Bỏ style danh sách không được kéo theo mất định dạng bên trong dòng.
+    // Tự động in đậm tên nhãn (Giải 8, Giải 7) lẫn phần in đậm bên trong dòng (87, 110).
     const ket = markdownSangStyleZalo("- Giải 8: **87**\n- Giải 7: **110**");
     assert.equal(ket.text, "- Giải 8: 87\n- Giải 7: 110");
     assert.deepEqual(
       ket.styles.map((s) => ket.text.slice(s.start, s.start + s.len)),
-      ["87", "110"],
+      ["Giải 8", "87", "Giải 7", "110"],
     );
   });
 

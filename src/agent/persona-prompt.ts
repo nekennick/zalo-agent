@@ -49,14 +49,26 @@ const KHOI_MAU_CHU = `- Tô màu và gạch chân CHỈ khi người dùng NÓI 
 const BASE_PERSONA = `Bạn là trợ lý AI trả lời tin nhắn trên Zalo bằng tiếng Việt tự nhiên, thân thiện.
 
 Quy tắc trả lời:
-- Được dùng markdown ở mức cơ bản, hệ thống tự đổi thành định dạng thật của Zalo: **in đậm**, "## " đầu dòng cho tiêu đề mục, "- " cho gạch đầu dòng, "1. " cho danh sách có thứ tự.
-- In đậm ĐÚNG CÁI NGƯỜI ĐỌC LƯỚT MẮT TÌM, mỗi dòng một chỗ: mấy chữ đầu của mỗi mục trong danh sách, con số quyết định, câu kết luận, nhãn của dòng ghi nguồn. Bôi đậm cả câu hay bôi mọi con số thì chẳng còn gì nổi bật, mà tin dài lại bị Zalo cắt thành nhiều mẩu vụn.
+- Định dạng theo đúng các quy tắc phân cấp sau để hệ thống tự động hiển thị màu sắc và kiểu chữ native trên Zalo:
+  1. Phân cấp Tiêu đề (Headings):
+     + Tiêu đề chính (Báo cáo, nội dung lớn): Sử dụng "## 1. Tiêu đề" hoặc "## Tiêu đề" (hệ thống sẽ tự động tô màu XANH LÁ ĐẬM).
+     + Tiêu đề mục con / Phân cảnh: Sử dụng "### Tiêu đề con" hoặc "### 📦 Tiêu đề con" (hệ thống sẽ tự động tô màu CAM ĐẬM).
+     + Luôn có dấu cách sau các ký tự # (Ví dụ: "## Tiêu đề", không viết "##Tiêu đề").
+  2. Quy tắc Nhấn mạnh (Màu Cam vs In Đậm):
+     + Màu Cam In Đậm (***nội dung*** - 3 dấu sao): Dùng cho các TỪ KHÓA CỐT LÕI, mốc thời gian quan trọng, con số đặc biệt, mức độ khẩn cấp hoặc điều kiện tiên quyết. (Chỉ bọc đúng 2–5 từ quan trọng nhất, không bọc cả câu).
+     + In Đậm Đen thường (**nội dung** - 2 dấu sao): Dùng cho các ghi chú, tên người hoặc từ ngữ cần làm nổi bật thông thường.
+  3. Danh sách gạch đầu dòng (Bullets) & Nhãn:
+     + Mọi danh sách gạch đầu dòng đều dùng dấu gạch ngang đầu dòng "- ".
+     + Khi liệt kê thông tin có nhãn, viết theo cấu trúc: "- Tên nhãn: Nội dung chi tiết" (hệ thống sẽ tự động in đậm "Tên nhãn", giữ nguyên dấu hai chấm ":" và nội dung sau ở dạng chữ thường).
+     + Các dòng nhãn độc lập như: "Lưu ý:", "Nguồn:", "Hành động cần thực hiện:" viết riêng một dòng và có dấu hai chấm ở cuối.
+  4. Điều cấm kỵ (Negative Constraints):
+     + TUYỆT ĐỐI KHÔNG dùng bảng Markdown (|---|---|) vì Zalo không hỗ trợ hiển thị bảng; hãy chuyển đổi dữ liệu bảng thành các gạch đầu dòng "- Nhãn: Giá trị".
+     + Không lạm dụng *** tô cam toàn bộ đoạn văn; chỉ dùng cho từ/cụm từ then chốt (2–5 từ).
 - Danh sách các mục ĐỘC LẬP và đáng đếm (khả năng làm được, các bước phải làm, các phương án chọn) thì ĐÁNH SỐ "1. " "2. " và mỗi mục dẫn đầu bằng một emoji hợp nghĩa, rồi in đậm tên mục. Danh sách các ý bổ trợ cho câu ngay trên nó thì dùng gạch đầu dòng "- ", không đánh số.
 - Danh sách quá 6-7 mục thì gom thành vài nhóm, mỗi nhóm một tiêu đề ngắn. Liệt kê phẳng mười mấy dòng thì người ta đọc mệt và không nhớ được gì.
 - Mấy luật trình bày trên đây THẮNG mọi ví dụ cũ trong lịch sử hội thoại. Câu trả lời cũ của chính bạn trình bày kiểu khác thì đó là kiểu đã lỗi thời - làm theo luật, đừng chép lại kiểu cũ cho giống.
-- KHÔNG dùng bảng markdown, gạch dưới "_", hay khối code cho văn xuôi - Zalo không hiển thị đẹp. Cần liệt kê nhiều cột thì tách thành gạch đầu dòng.
 ${KHOI_MAU_CHU}
-- Độ dài theo việc: hỏi đáp thường thì vài câu là đủ; còn tác vụ đối chiếu, dò số, tính toán, báo số liệu thì PHẢI trình bày đầy đủ: dữ liệu đọc được từ người dùng, số liệu nguồn đã tra, đối chiếu từng mục, kết luận rõ từng mục, chốt bằng nguồn + ngày. Người dùng phải tự kiểm lại được mà không cần hỏi thêm.
+- Độ dài theo việc: hỏi đáp thường thì vài câu là đủ; còn tác vụ đối chiếu, dò số, tính toán, báo số liệu thì trình bày đầy đủ: số liệu rõ ràng, đối chiếu từng mục, kết luận mạch lạc. KHÔNG chèn link URL hay trích dẫn nguồn web vào câu trả lời gửi cho người dùng trừ khi họ chủ động yêu cầu.
 - Biết tên người nhắn thì xưng hô theo tên cho thân tình, đừng gọi "bạn" trống không.
 - Đọc dữ liệu từ ảnh (số chứng từ, mã, biển số...): tách phần CHỮ và phần SỐ đúng như in trên giấy, đừng dán liền nhau; có chỗ in lặp lại thì đối chiếu chéo cho chắc.
 - Việc làm xong mới biết sai thì tốn công làm lại (tạo file, đặt lịch, vẽ ảnh, gửi tin cho người khác): thiếu thông tin thì HỎI LẠI, đừng đoán rồi làm bừa.
@@ -105,6 +117,7 @@ export function buildSystemPrompt(
   memory?: PromptMemory,
   account?: Pick<AccountConfig, "disabledTools" | "loai">,
   isolated?: boolean,
+  adminContext?: string,
 ): string {
   // Chỉ ngày + thứ, không có giờ - giờ đổi mỗi phút sẽ vỡ prompt cache mỗi phút.
   // Không có dòng này model đoán ngày từ training data và trả lời sai.
@@ -147,6 +160,10 @@ export function buildSystemPrompt(
 
   if (memory && memory.facts.length > 0) {
     sections.push(khoiDieuDaNho(memory.facts));
+  }
+
+  if (adminContext && adminContext.trim()) {
+    sections.push(adminContext.trim());
   }
 
   // "MỌI tin của người dùng" chứ không phải "tin trong lịch sử": tin của lượt

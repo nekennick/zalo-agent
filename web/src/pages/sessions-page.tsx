@@ -45,6 +45,23 @@ export function SessionsPage({ accounts }: { accounts: AccountInfo[] }) {
     reload();
   }
 
+  async function toggleAdminShare(t: ThreadItem) {
+    if (t.threadType !== 1) return;
+    const nextVal = !t.shareAdminContext;
+    setItems((prev) =>
+      prev.map((item) =>
+        item.accountId === t.accountId && item.threadId === t.threadId
+          ? { ...item, shareAdminContext: nextVal }
+          : item,
+      ),
+    );
+    try {
+      await api.setThreadAdminShare(t.accountId, t.threadId, nextVal);
+    } catch {
+      reload();
+    }
+  }
+
   async function xoa(t: ThreadItem) {
     const ok = await confirm({
       title: `Xóa cuộc trò chuyện "${t.displayName || t.threadId}"?`,
@@ -62,13 +79,13 @@ export function SessionsPage({ accounts }: { accounts: AccountInfo[] }) {
     }
   }
 
+  const headers = showAccountColumn
+    ? ["Tên", "Account", "Loại", "Tin nhắn", "Token", "Tin cuối", "Ngữ cảnh Admin", "Bot", ""]
+    : ["Tên", "Loại", "Tin nhắn", "Token", "Tin cuối", "Ngữ cảnh Admin", "Bot", ""];
+
   return (
     <div>
-      <PageHeader
-        icon={IconChat}
-        title="Sessions"
-        subtitle="Mỗi thread (chat riêng / nhóm) là một session, ngữ cảnh giữ trong SQLite"
-      />
+      <PageHeader icon={IconChat} title="Sessions" subtitle="Mỗi thread (chat riêng / nhóm) là một session, ngữ cảnh giữ trong SQLite" />
 
       <ListToolbar
         query={query}
@@ -80,22 +97,10 @@ export function SessionsPage({ accounts }: { accounts: AccountInfo[] }) {
         onPage={setPage}
       />
 
-      <TableShell
-        headers={
-          showAccountColumn
-            ? ["Tên", "Account", "Loại", "Tin nhắn", "Token", "Tin cuối", "Bot", ""]
-            : ["Tên", "Loại", "Tin nhắn", "Token", "Tin cuối", "Bot", ""]
-        }
-        minWidth={showAccountColumn ? 960 : 860}
-      >
-        {items.length === 0 && (
-          <EmptyRow colSpan={showAccountColumn ? 8 : 7} text="Chưa có session nào" />
-        )}
+      <TableShell headers={headers} minWidth={showAccountColumn ? 1040 : 940}>
+        {items.length === 0 && <EmptyRow colSpan={showAccountColumn ? 9 : 8} text="Chưa có session nào" />}
         {items.map((t) => (
-          <tr
-            key={`${t.accountId}:${t.threadId}`}
-            className="border-b border-line/60 last:border-0 hover:bg-tile/40"
-          >
+          <tr key={`${t.accountId}:${t.threadId}`} className="border-b border-line/60 last:border-0 hover:bg-tile/40">
             <td className="px-4 py-3">
               <div className="flex items-center gap-3">
                 <InitialAvatar name={t.displayName || t.threadId} />
@@ -103,8 +108,6 @@ export function SessionsPage({ accounts }: { accounts: AccountInfo[] }) {
                   <div className="truncate font-medium text-ink">{t.displayName || t.threadId}</div>
                   <div className="truncate text-[12px] text-ink-soft/60">{t.threadId}</div>
                   {t.handoffAt && (
-                    // Bot tự chuyển cho người thật (tool handoff_to_human) - bật lại
-                    // bot ở cột bên phải là xóa nhãn này
                     <div className="mt-1" title={t.handoffReason || undefined}>
                       <Badge tone="red">Cần người hỗ trợ</Badge>
                     </div>
@@ -113,14 +116,10 @@ export function SessionsPage({ accounts }: { accounts: AccountInfo[] }) {
               </div>
             </td>
             {showAccountColumn && (
-              <td className="px-4 py-3">
-                <Badge tone="gray" dot={false}>{accountLabel(accounts, t.accountId)}</Badge>
-              </td>
+              <td className="px-4 py-3"><Badge tone="gray" dot={false}>{accountLabel(accounts, t.accountId)}</Badge></td>
             )}
             <td className="px-4 py-3">
-              <Badge tone={t.threadType === 1 ? "amber" : "blue"} dot={false}>
-                {t.threadType === 1 ? "Group" : "Direct"}
-              </Badge>
+              <Badge tone={t.threadType === 1 ? "amber" : "blue"} dot={false}>{t.threadType === 1 ? "Group" : "Direct"}</Badge>
             </td>
             <td className="px-4 py-3 text-ink-soft">{formatNumber(t.messageCount)}</td>
             <td className="px-4 py-3 text-ink-soft">
@@ -129,33 +128,31 @@ export function SessionsPage({ accounts }: { accounts: AccountInfo[] }) {
             </td>
             <td className="px-4 py-3 text-ink-soft">{formatTime(t.lastMessageAt)}</td>
             <td className="px-4 py-3">
+              {t.threadType === 1 ? (
+                <button
+                  onClick={() => toggleAdminShare(t)}
+                  className={`relative h-5 w-9 rounded-full transition-colors ${t.shareAdminContext ? "bg-violet-600" : "bg-slate-300 dark:bg-slate-600"}`}
+                  title={t.shareAdminContext ? "Đang chia sẻ chỉ đạo từ Chat riêng Admin sang nhóm này - Bấm để tắt" : "Chưa chia sẻ từ Chat riêng Admin - Bấm để bật"}
+                >
+                  <span className={`absolute top-0.5 h-4 w-4 rounded-full bg-white shadow-sm transition-all ${t.shareAdminContext ? "left-[18px]" : "left-0.5"}`} />
+                </button>
+              ) : (
+                <span className="text-[12px] text-ink-soft/40" title="Chỉ áp dụng cho nhóm">-</span>
+              )}
+            </td>
+            <td className="px-4 py-3">
               <button
                 onClick={() => toggleBot(t)}
-                className={`relative h-5 w-9 rounded-full transition-colors ${
-                  t.botEnabled ? "bg-zalo-500" : "bg-slate-300 dark:bg-slate-600"
-                }`}
+                className={`relative h-5 w-9 rounded-full transition-colors ${t.botEnabled ? "bg-zalo-500" : "bg-slate-300 dark:bg-slate-600"}`}
                 title={t.botEnabled ? "Bot đang bật - bấm để tắt" : "Bot đang tắt - bấm để bật"}
               >
-                <span
-                  className={`absolute top-0.5 h-4 w-4 rounded-full bg-white shadow-sm transition-all ${
-                    t.botEnabled ? "left-[18px]" : "left-0.5"
-                  }`}
-                />
+                <span className={`absolute top-0.5 h-4 w-4 rounded-full bg-white shadow-sm transition-all ${t.botEnabled ? "left-[18px]" : "left-0.5"}`} />
               </button>
             </td>
             <td className="px-4 py-3">
               <div className="flex items-center justify-end gap-1">
-                <button
-                  onClick={() => setOpenThread(t)}
-                  className="text-[13px] font-medium text-zalo-600 hover:underline"
-                >
-                  Xem
-                </button>
-                <button
-                  onClick={() => xoa(t)}
-                  className="rounded-lg p-1.5 text-ink-soft/60 transition-colors hover:bg-red-500/10 hover:text-red-500"
-                  title="Xóa hẳn session này"
-                >
+                <button onClick={() => setOpenThread(t)} className="text-[13px] font-medium text-zalo-600 hover:underline">Xem</button>
+                <button onClick={() => xoa(t)} className="rounded-lg p-1.5 text-ink-soft/60 transition-colors hover:bg-red-500/10 hover:text-red-500" title="Xóa hẳn session này">
                   <IconTrash className="h-4 w-4" />
                 </button>
               </div>

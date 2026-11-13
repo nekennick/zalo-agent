@@ -74,6 +74,34 @@ function laDongKhoi(dong: string | undefined): boolean {
   return TIEU_DE_RE.test(dong);
 }
 
+/**
+ * Tự động in đậm tên nhãn trong danh sách: `- Tên nhãn: Nội dung` hoặc dòng độc lập `Lưu ý:`.
+ * Giữ nguyên dấu hai chấm `:` và nội dung sau ở dạng chữ thường.
+ */
+function chuanHoaNhanDanhSach(dong: string): string {
+  // 1. Dòng danh sách có nhãn: - Tên nhãn: Nội dung hoặc * Tên nhãn: Nội dung
+  // Bỏ qua nếu nhãn đã có sẵn định dạng (dấu * hoặc ` hoặc < hoặc URL)
+  const listLabelRe = /^(\s*[-*]\s+)([^:\n*`~<]+?):(\s+.*)$/;
+  if (listLabelRe.test(dong)) {
+    return dong.replace(listLabelRe, (match, prefix, label, rest) => {
+      const trimmed = label.trim();
+      if (trimmed.length > 0 && trimmed.length <= 50 && !trimmed.includes("http")) {
+        return `${prefix}**${trimmed}**:${rest}`;
+      }
+      return match;
+    });
+  }
+
+  // 2. Dòng nhãn độc lập: Lưu ý:, Nguồn:, Hành động cần thực hiện:...
+  const standaloneLabelRe = /^(Lưu ý|Ghi chú|Nguồn|Hành động cần thực hiện|Chú ý|Cảnh báo|Yêu cầu|Điều kiện|Quan trọng|Thông tin thêm):$/i;
+  if (standaloneLabelRe.test(dong.trim())) {
+    const label = dong.trim().slice(0, -1);
+    return `**${label}**:`;
+  }
+
+  return dong;
+}
+
 export type KetQuaDinhDang = { text: string; styles: Style[] };
 
 /**
@@ -163,16 +191,25 @@ export function markdownSangStyleZalo(input: string): KetQuaDinhDang {
     // Chỉ còn TIÊU ĐỀ là khối: gạch đầu dòng và đánh số cố ý đi qua đây như chữ
     // thường, giữ nguyên ký tự "- " / "1. " - lý do ở docstring `laDongKhoi`.
     const mTieuDe = TIEU_DE_RE.exec(dongLink);
-    const noiDung = mTieuDe ? mTieuDe[2]!.trimEnd() : dongLink;
+    const noiDung = mTieuDe ? mTieuDe[2]!.trimEnd() : chuanHoaNhanDanhSach(dongLink);
 
     const { text: daInline, spans } = apDungInline(noiDung);
     phan.push(daInline);
 
     if (daInline.length > 0) {
-      // Big cho to hơn thấy rõ, Bold thêm độ đậm cho client cũ
       if (mTieuDe) {
+        const dauCap = mTieuDe[1]!;
+        const cap = dauCap.length;
+        // Big cho to hơn thấy rõ, Bold thêm độ đậm cho client cũ
         styles.push({ start: conTro, len: daInline.length, st: TextStyle.Big });
         styles.push({ start: conTro, len: daInline.length, st: TextStyle.Bold });
+        if (cap <= 2) {
+          // Tiêu đề chính (## hoặc #): XANH LÁ ĐẬM
+          styles.push({ start: conTro, len: daInline.length, st: TextStyle.Green });
+        } else {
+          // Tiêu đề mục con / Phân cảnh (### trở lên): CAM ĐẬM
+          styles.push({ start: conTro, len: daInline.length, st: TextStyle.Orange });
+        }
       }
       for (const s of spans) styles.push({ start: conTro + s.start, len: s.len, st: s.st });
     }

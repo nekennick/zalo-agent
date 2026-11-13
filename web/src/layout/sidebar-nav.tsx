@@ -17,6 +17,7 @@ import {
   IconHeart,
   IconLogout,
   IconMoon,
+  IconQrCode,
   IconSignal,
   IconSun,
   IconUsers,
@@ -59,6 +60,7 @@ const SECTIONS: { title: string; items: { to: string; label: string; icon: IconF
     items: [
       { to: "/memory", label: "Memory", icon: IconBrain },
       { to: "/knowledge", label: "Kho tri thức", icon: IconFileText },
+      { to: "/vietqr", label: "Tài khoản VietQR", icon: IconQrCode },
     ],
   },
   {

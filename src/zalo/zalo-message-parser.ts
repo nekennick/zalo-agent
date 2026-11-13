@@ -18,7 +18,11 @@ export type LoaiTin = "chu" | "anh" | "file" | "sticker" | "thoai" | "video" | "
 export type DinhKem = { ten: string; url: string };
 
 /** Tin được trích dẫn (người gửi bấm "Trả lời" một tin cũ) */
-export type TinTrichDan = { nguoiGui: string; noiDung: string };
+export type TinTrichDan = {
+  nguoiGui: string;
+  noiDung: string;
+  dinhKem?: DinhKem;
+};
 
 export type ParsedMessage = {
   accountId: string;
@@ -96,20 +100,28 @@ export function loaiTinTuMsgType(msgType: string): LoaiTin {
   return "khac";
 }
 
-/** `quote.attach` là chuỗi JSON; tin trích là file/ảnh thì chữ nằm ở `title` */
+/** `quote.attach` là chuỗi JSON; tin trích là file/ảnh thì chữ nằm ở `title` và link tải ở `href` */
 function docTrichDan(raw: unknown): TinTrichDan | undefined {
   if (!raw || typeof raw !== "object") return undefined;
   const quote = raw as Record<string, unknown>;
   let noiDung = typeof quote.msg === "string" ? quote.msg : "";
-  if (!noiDung && typeof quote.attach === "string" && quote.attach) {
+  let dinhKem: DinhKem | undefined;
+  if (typeof quote.attach === "string" && quote.attach) {
     try {
       const attach = JSON.parse(quote.attach) as Record<string, unknown>;
-      noiDung = String(attach.title ?? attach.description ?? "");
+      const ten = String(attach.title ?? attach.description ?? "");
+      const url = String(attach.href ?? "");
+      if (ten && url) dinhKem = { ten, url };
+      if (!noiDung) noiDung = ten;
     } catch {
       /* attach không phải JSON - bỏ qua */
     }
   }
-  return { nguoiGui: String(quote.fromD ?? ""), noiDung: noiDung || "[đính kèm]" };
+  return {
+    nguoiGui: String(quote.fromD ?? ""),
+    noiDung: noiDung || "[đính kèm]",
+    ...(dinhKem ? { dinhKem } : {}),
+  };
 }
 
 /* eslint-disable @typescript-eslint/no-explicit-any */

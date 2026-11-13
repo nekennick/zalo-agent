@@ -19,10 +19,16 @@ export type SearchSettings = {
   provider: SearchProvider;
   /** Rỗng nghĩa là chưa có key ở cả DB lẫn env */
   braveApiKey: string;
+  /** Tích hợp nguồn bách khoa toàn thư Wikipedia */
+  wikipediaEnabled: boolean;
+  /** Tích hợp nguồn bài báo học thuật arXiv */
+  arxivEnabled: boolean;
 };
 
 const PROVIDER_KEY = "search_provider";
 const BRAVE_KEY = "search_brave_api_key";
+const WIKIPEDIA_KEY = "search_wikipedia_enabled";
+const ARXIV_KEY = "search_arxiv_enabled";
 
 const getStmt = db.prepare("SELECT value FROM runtime_settings WHERE key = ?");
 const setStmt = db.prepare(`
@@ -59,13 +65,17 @@ export function getSearchSettings(): SearchSettings {
   const braveApiKey = getBraveApiKey();
   const stored = read(PROVIDER_KEY);
   const provider: SearchProvider = stored === "brave" && braveApiKey ? "brave" : "duckduckgo";
-  return { provider, braveApiKey };
+  const wikipediaEnabled = read(WIKIPEDIA_KEY) !== "false";
+  const arxivEnabled = read(ARXIV_KEY) !== "false";
+  return { provider, braveApiKey, wikipediaEnabled, arxivEnabled };
 }
 
 export type SearchSettingsUpdate = {
   provider?: SearchProvider;
   /** Bỏ trống = giữ key hiện tại; chuỗi rỗng tường minh = xóa key */
   braveApiKey?: string;
+  wikipediaEnabled?: boolean;
+  arxivEnabled?: boolean;
 };
 
 /**
@@ -85,6 +95,14 @@ export function updateSearchSettings(update: SearchSettingsUpdate): SearchSettin
     setStmt.run(PROVIDER_KEY, update.provider);
   }
 
+  if (update.wikipediaEnabled !== undefined) {
+    setStmt.run(WIKIPEDIA_KEY, update.wikipediaEnabled ? "true" : "false");
+  }
+
+  if (update.arxivEnabled !== undefined) {
+    setStmt.run(ARXIV_KEY, update.arxivEnabled ? "true" : "false");
+  }
+
   return getSearchSettings();
 }
 
@@ -95,6 +113,8 @@ export function getSearchSettingsForApi() {
     provider: settings.provider,
     braveApiKeyMasked: maskSecret(settings.braveApiKey),
     hasBraveApiKey: Boolean(settings.braveApiKey),
+    wikipediaEnabled: settings.wikipediaEnabled,
+    arxivEnabled: settings.arxivEnabled,
   };
 }
 

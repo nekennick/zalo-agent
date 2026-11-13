@@ -83,10 +83,11 @@ ENV DASHBOARD_HOST=0.0.0.0
 # đường mà runtime dùng (xem `lenhYtDlp`). Kiểm bằng console script thì một image
 # có script nhưng hỏng module vẫn build xanh. Bước kiểm nằm SAU `apk del` trong
 # CÙNG một RUN, nên nếu gỡ pip có làm hỏng gì thì build đỏ ngay tại đây.
-RUN apk add --no-cache python3 py3-pip \
+RUN apk add --no-cache python3 py3-pip ffmpeg \
     && pip3 install --no-cache-dir --break-system-packages yt-dlp \
     && apk del py3-pip \
-    && python3 -m yt_dlp --version
+    && python3 -m yt_dlp --version \
+    && ffmpeg -version
 ENV PYTHON_PATH=python3
 # Cache của yt-dlp. `adduser --system` KHÔNG tạo /home/zalo, nên thiếu dòng này
 # thì nó ghi cache vào một thư mục không tồn tại và `--no-warnings` nuốt luôn

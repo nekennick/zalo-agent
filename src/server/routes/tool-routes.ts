@@ -19,6 +19,8 @@ const searchUpdateSchema = z.object({
   // Bỏ trống = giữ key cũ; chuỗi rỗng tường minh = xóa key. Key đi 1 chiều
   // lên server, lưu DB mã hóa, không bao giờ trả về nguyên văn.
   braveApiKey: z.string().optional(),
+  wikipediaEnabled: z.boolean().optional(),
+  arxivEnabled: z.boolean().optional(),
 });
 
 const fetchUpdateSchema = z.object({

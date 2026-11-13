@@ -24,6 +24,7 @@ export function SessionDetailDrawer({
   const [messages, setMessages] = useState<MessageItem[]>([]);
   const [hasOlder, setHasOlder] = useState(false);
   const [tab, setTab] = useState<"chat" | "trace">("chat");
+  const [shareAdmin, setShareAdmin] = useState(thread.shareAdminContext);
   // Giữ bản sao cục bộ để xóa xong khối biến mất ngay, không phải tải lại cả trang
   const [tomTat, setTomTat] = useState(thread.summary);
   const [moTomTat, setMoTomTat] = useState(false);
@@ -115,6 +116,13 @@ export function SessionDetailDrawer({
     }
   }
 
+  async function toggleShareAdmin() {
+    const nextVal = !shareAdmin;
+    setShareAdmin(nextVal);
+    await api.setThreadAdminShare(thread.accountId, thread.threadId, nextVal);
+    onDoiDuLieu?.();
+  }
+
   async function loadOlder() {
     const oldestId = messages[0]?.id;
     if (!oldestId) return;
@@ -144,6 +152,28 @@ export function SessionDetailDrawer({
             Đóng
           </button>
         </div>
+
+        {thread.threadType === 1 && (
+          <div className="flex items-center justify-between border-b border-line bg-tile/40 px-5 py-2.5 text-[13px]">
+            <div>
+              <div className="font-medium text-ink">Chia sẻ ngữ cảnh Admin</div>
+              <div className="text-[11px] text-ink-soft">Cho phép nạp chỉ đạo từ chat riêng của Admin vào nhóm này</div>
+            </div>
+            <button
+              onClick={toggleShareAdmin}
+              className={`relative h-5 w-9 rounded-full transition-colors ${
+                shareAdmin ? "bg-violet-600" : "bg-slate-300 dark:bg-slate-600"
+              }`}
+              title={shareAdmin ? "Đang chia sẻ - Bấm để tắt" : "Đang tắt - Bấm để bật"}
+            >
+              <span
+                className={`absolute top-0.5 h-4 w-4 rounded-full bg-white shadow-sm transition-all ${
+                  shareAdmin ? "left-[18px]" : "left-0.5"
+                }`}
+              />
+            </button>
+          </div>
+        )}
 
         <div className="flex gap-1 border-b border-line px-5 pt-2">
           {(

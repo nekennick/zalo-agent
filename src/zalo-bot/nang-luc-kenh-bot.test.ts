@@ -51,6 +51,10 @@ describe("năng lực kênh bot", () => {
       // Chỉ đổi cờ trong DB + nhắn báo qua KenhLuot (handoff-notify.ts), không
       // cần năng lực riêng nào của zca-js
       "handoff_to_human",
+      // Các action chữ (add_source, ask, list_sources, generate_report,
+      // generate_slides) chạy được trên cả hai kênh; riêng action xuất file
+      // media tự kiểm ctx.api và trả ketQuaLoi trên kênh bot.
+      "notebooklm",
     ]);
     const chuaXet = TOOL_KEYS.filter((k) => !daXet.has(k));
     assert.deepEqual(chuaXet, [], `tool chưa xét cho kênh bot: ${chuaXet.join(", ")}`);

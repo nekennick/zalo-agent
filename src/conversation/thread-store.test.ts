@@ -72,6 +72,21 @@ describe("thread-store", () => {
     assert.equal(threads.hasDisplayName("acc-1", "t-group"), true);
   });
 
+  it("bật và tắt shareAdminContext cho thread nhóm", () => {
+    threads.recordThreadActivity(activity("t-share-group"));
+
+    assert.equal(threads.isThreadAdminShared("acc-1", "t-share-group"), false);
+
+    assert.equal(threads.setThreadAdminShare("acc-1", "t-share-group", true), true);
+    assert.equal(threads.isThreadAdminShared("acc-1", "t-share-group"), true);
+
+    const rows = threads.listThreads({ accountId: "acc-1", query: "t-share-group" });
+    assert.equal(rows[0]!.shareAdminContext, true);
+
+    assert.equal(threads.setThreadAdminShare("acc-1", "t-share-group", false), true);
+    assert.equal(threads.isThreadAdminShared("acc-1", "t-share-group"), false);
+  });
+
   it("backfill dựng threads từ messages cũ, không chạy lại khi đã có dữ liệu", () => {
     // threads đã có dữ liệu từ các test trên -> backfill phải no-op
     assert.equal(threads.backfillThreadsFromMessages(), 0);

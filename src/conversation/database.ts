@@ -6,7 +6,9 @@ import { DatabaseSync } from "node:sqlite";
 import { dataDir } from "../config/env.js";
 import { taoBangKnowledgeBase } from "../knowledge/kb-schema.js";
 import { taoBangMcp } from "../mcp/mcp-schema.js";
+import { taoBangNotebookLm } from "../notebooklm/notebooklm-schema.js";
 import { taoBangFriendRequests } from "./friend-schema.js";
+import { taoBangVietQrBank } from "./vietqr-bank-schema.js";
 
 export const db = new DatabaseSync(path.join(dataDir, "zalo-agent.db"));
 db.exec("PRAGMA journal_mode = WAL;");
@@ -255,6 +257,12 @@ function runMigrations(): void {
   // default-deny). Xem src/mcp/mcp-schema.ts.
   taoBangMcp(db);
 
+  // Sổ tay NotebookLM riêng từng cuộc chat + đếm trần mỗi ngày (mục 14.4).
+  taoBangNotebookLm(db);
+
+  // Tài khoản ngân hàng nhận thanh toán VietQR (ăn vặt, cơm trưa)
+  taoBangVietQrBank(db);
+
   // Tool CHẠY LỖI: AI SDK để chúng ở content dạng tool-error, không vào
   // toolResults, nên trước cột này mọi lần tool hỏng đều mất tăm khỏi trace.
   addColumnIfMissing("agent_steps", "tool_errors", "TEXT NOT NULL DEFAULT '[]'");
@@ -282,6 +290,9 @@ function runMigrations(): void {
   // xoay thì router vẫn coi đây là phiên cũ và giữ tiền tố đã cache của cuộc
   // trò chuyện vừa bị xóa. Mặc định 0 để mọi thread cũ giữ nguyên khóa đang có.
   addColumnIfMissing("threads", "context_epoch", "INTEGER NOT NULL DEFAULT 0");
+
+  // Liên thông ngữ cảnh: chia sẻ tin nhắn/chỉ đạo từ chat riêng của Admin sang nhóm này (0 = tắt, 1 = bật)
+  addColumnIfMissing("threads", "share_admin_context", "INTEGER NOT NULL DEFAULT 0");
 
   // Phản hồi tức thì: thả reaction + báo "đang nhập" khi bot bắt đầu xử lý
   addColumnIfMissing("accounts", "auto_react_enabled", "INTEGER NOT NULL DEFAULT 1");

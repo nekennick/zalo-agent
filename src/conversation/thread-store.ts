@@ -12,6 +12,8 @@ export type ThreadRow = {
   /** Lúc bot chuyển thread này cho người thật (ISO), rỗng = không - xem thread-handoff-store.ts */
   handoffAt: string;
   handoffReason: string;
+  /** Chia sẻ tin nhắn/chỉ đạo từ chat riêng của Admin sang nhóm này */
+  shareAdminContext: boolean;
 };
 
 const upsertStmt = db.prepare(`
@@ -147,9 +149,35 @@ export function getThreadContextEpoch(accountId: string, threadId: string): numb
   return row?.context_epoch ?? 0;
 }
 
+const getAdminShareStmt = db.prepare(
+  "SELECT share_admin_context FROM threads WHERE account_id = ? AND thread_id = ?",
+);
+
+/** Kiểm tra nhóm có bật chia sẻ ngữ cảnh từ chat riêng Admin không */
+export function isThreadAdminShared(accountId: string, threadId: string): boolean {
+  const row = getAdminShareStmt.get(accountId, threadId) as
+    | { share_admin_context?: number }
+    | undefined;
+  return row?.share_admin_context === 1;
+}
+
+const setAdminShareStmt = db.prepare(
+  "UPDATE threads SET share_admin_context = ? WHERE account_id = ? AND thread_id = ?",
+);
+
+export function setThreadAdminShare(
+  accountId: string,
+  threadId: string,
+  enabled: boolean,
+): boolean {
+  const result = setAdminShareStmt.run(enabled ? 1 : 0, accountId, threadId);
+  return result.changes > 0;
+}
+
 const listStmt = db.prepare(`
   SELECT account_id, thread_id, thread_type, display_name, bot_enabled,
-         message_count, last_message_at, last_sender_name, handoff_at, handoff_reason
+         message_count, last_message_at, last_sender_name, handoff_at, handoff_reason,
+         share_admin_context
   FROM threads
   WHERE (? = '' OR account_id = ?) AND (display_name LIKE ? OR thread_id LIKE ?)
   ORDER BY last_message_at DESC
@@ -169,6 +197,7 @@ export function listThreads(params: {
     account_id: string; thread_id: string; thread_type: number; display_name: string;
     bot_enabled: number; message_count: number; last_message_at: string | null;
     last_sender_name: string | null; handoff_at: string; handoff_reason: string;
+    share_admin_context?: number;
   };
   const rows = listStmt.all(
     acc, acc, like, like, params.limit ?? 50, params.offset ?? 0,
@@ -184,6 +213,7 @@ export function listThreads(params: {
     lastSenderName: r.last_sender_name,
     handoffAt: r.handoff_at,
     handoffReason: r.handoff_reason,
+    shareAdminContext: r.share_admin_context === 1,
   }));
 }
 

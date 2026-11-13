@@ -104,6 +104,8 @@ export type ThreadItem = {
   handoffReason: string;
   usage: { turns: number; totalTokens: number };
   summary: string;
+  /** Chia sẻ ngữ cảnh chỉ đạo từ chat riêng của Admin */
+  shareAdminContext: boolean;
 };
 
 export type MessageItem = {
@@ -184,6 +186,27 @@ export type FriendItem = {
   avatar?: string;
 };
 
+// ===== VietQR =====
+
+export type VietQrBank = {
+  bin: string;
+  code: string;
+  shortName: string;
+  name: string;
+};
+
+export type VietQrAccountItem = {
+  id: string;
+  bankCode: string;
+  bankName: string;
+  accountNumber: string;
+  accountHolder: string;
+  nickname: string;
+  isDefault: boolean;
+  createdAt: string;
+  updatedAt: string;
+};
+
 // ===== API calls =====
 
 export const api = {
@@ -217,6 +240,14 @@ export const api = {
       method: "PATCH",
       body: JSON.stringify({ accountId, botEnabled }),
     }),
+  setThreadAdminShare: (accountId: string, threadId: string, enabled: boolean) =>
+    request<{ ok: true; shareAdminContext: boolean }>(
+      `/api/threads/${encodeURIComponent(threadId)}/admin-share`,
+      {
+        method: "PATCH",
+        body: JSON.stringify({ accountId, enabled }),
+      },
+    ),
   xoaTomTatThread: (accountId: string, threadId: string) =>
     request<{ ok: true }>(
       `/api/threads/${encodeURIComponent(threadId)}/summary?accountId=${encodeURIComponent(accountId)}`,
@@ -373,7 +404,12 @@ export const api = {
       duoi ? `/api/tools?${duoi}` : "/api/tools",
     );
   },
-  updateSearchSettings: (update: { provider?: "duckduckgo" | "brave"; braveApiKey?: string }) =>
+  updateSearchSettings: (update: {
+    provider?: "duckduckgo" | "brave";
+    braveApiKey?: string;
+    wikipediaEnabled?: boolean;
+    arxivEnabled?: boolean;
+  }) =>
     request<{ ok: true; search: SearchSettings }>("/api/tools/search", {
       method: "PATCH",
       body: JSON.stringify(update),
@@ -592,6 +628,32 @@ export const api = {
         body: JSON.stringify({ agentIds }),
       }),
   },
+
+  vietqr: {
+    banks: () => request<{ banks: VietQrBank[] }>("/api/vietqr/banks"),
+    accounts: () => request<{ accounts: VietQrAccountItem[] }>("/api/vietqr/accounts"),
+    createAccount: (data: {
+      bankCode: string;
+      bankName: string;
+      accountNumber: string;
+      accountHolder: string;
+      nickname?: string;
+      isDefault?: boolean;
+    }) =>
+      request<{ ok: true; account: VietQrAccountItem }>("/api/vietqr/accounts", {
+        method: "POST",
+        body: JSON.stringify(data),
+      }),
+    updateAccount: (id: string, data: Partial<VietQrAccountItem>) =>
+      request<{ ok: true }>(`/api/vietqr/accounts/${encodeURIComponent(id)}`, {
+        method: "PATCH",
+        body: JSON.stringify(data),
+      }),
+    deleteAccount: (id: string) =>
+      request<{ ok: true }>(`/api/vietqr/accounts/${encodeURIComponent(id)}`, {
+        method: "DELETE",
+      }),
+  },
 };
 
 export type ManagedAccount = {
@@ -641,6 +703,8 @@ export type SearchSettings = {
   provider: "duckduckgo" | "brave";
   braveApiKeyMasked: string;
   hasBraveApiKey: boolean;
+  wikipediaEnabled: boolean;
+  arxivEnabled: boolean;
 };
 
 export type FetchSettings = { fallbackEnabled: boolean };

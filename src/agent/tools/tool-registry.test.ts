@@ -79,7 +79,7 @@ function configureSidecar(): void {
  * nào cho agent test ở file này, nên `available()` của nó luôn false ở đây -
  * đúng hành vi mặc định (agent mới tạo không tự đọc được tài liệu nào).
  */
-const GATED_TOOLS = ["read_image", "create_image", "kb_search", "handoff_to_human"];
+const GATED_TOOLS = ["read_image", "create_image", "kb_search", "handoff_to_human", "notebooklm"];
 
 function configureImageGen(): void {
   imageStore.updateImageSettings({
@@ -252,11 +252,11 @@ describe("tool-registry", () => {
     imageStore.clearImageSettings();
   });
 
-  it("runsInScheduledTurn khai đúng false cho đúng 10 tool + handoff_to_human, còn lại mặc định undefined", () => {
+  it("runsInScheduledTurn khai đúng false cho đúng 10 tool + handoff_to_human + notebooklm, còn lại mặc định undefined", () => {
     const bịLoại = registry.TOOL_DEFINITIONS.filter((t) => t.runsInScheduledTurn === false).map((t) => t.key);
-    // handoff_to_human tách riêng khỏi TOOL_LOAI_KHOI_LICH vì nó còn gate theo
-    // cấu hình account (hai ca trên dùng account chưa điền Zalo ID nhận báo)
-    assert.deepEqual(bịLoại.sort(), [...TOOL_LOAI_KHOI_LICH, "handoff_to_human"].sort());
+    // handoff_to_human và notebooklm tách riêng khỏi TOOL_LOAI_KHOI_LICH vì
+    // chúng còn gate theo cấu hình account / NOTEBOOKLM_API_URL
+    assert.deepEqual(bịLoại.sort(), [...TOOL_LOAI_KHOI_LICH, "handoff_to_human", "notebooklm"].sort());
   });
 
   it("handoff_to_human chỉ vào schema khi account đã điền Zalo ID nhận báo, và không vào lượt theo lịch", () => {

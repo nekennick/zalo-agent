@@ -29,6 +29,8 @@ export function ToolChainSettingsModal({
 
   const [braveOn, setBraveOn] = useState(search.provider === "brave");
   const [apiKey, setApiKey] = useState("");
+  const [wikiOn, setWikiOn] = useState(search.wikipediaEnabled ?? true);
+  const [arxivOn, setArxivOn] = useState(search.arxivEnabled ?? true);
   const [jinaOn, setJinaOn] = useState(fetchSettings.fallbackEnabled);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
@@ -46,6 +48,8 @@ export function ToolChainSettingsModal({
         const res = await api.updateSearchSettings({
           provider: braveOn ? "brave" : "duckduckgo",
           ...(apiKey.trim() ? { braveApiKey: apiKey.trim() } : {}),
+          wikipediaEnabled: wikiOn,
+          arxivEnabled: arxivOn,
         });
         onSaved({ search: res.search });
       } else {
@@ -161,6 +165,31 @@ export function ToolChainSettingsModal({
             description="Miễn phí, không cần key. Là bậc cuối nên web search không bao giờ thiếu nguồn."
             enabled
             locked
+          />
+
+          <div className="pt-2">
+            <h4 className="text-[12px] font-semibold uppercase tracking-wider text-ink-soft">
+              Nguồn bổ trợ chuyên sâu
+            </h4>
+            <p className="mt-0.5 text-[12px] text-ink-soft">
+              Tự động tra cứu song song khi gặp câu hỏi định nghĩa hoặc nghiên cứu học thuật.
+            </p>
+          </div>
+
+          <ChainStep
+            index={3}
+            title="Bách khoa Wikipedia"
+            description="Miễn phí, không cần key. Bổ sung tóm tắt bách khoa toàn thư cho các khái niệm, định nghĩa, nhân vật, lịch sử."
+            enabled={wikiOn}
+            onToggle={() => setWikiOn((v) => !v)}
+          />
+
+          <ChainStep
+            index={4}
+            title="Kho học thuật arXiv"
+            description="Miễn phí, không cần key. Tự động tra cứu công bố khoa học, bài báo học thuật khi gặp câu hỏi về paper, thuật toán, AI/ML."
+            enabled={arxivOn}
+            onToggle={() => setArxivOn((v) => !v)}
           />
 
           {blocked && (

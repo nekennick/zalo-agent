@@ -14,6 +14,7 @@ import { finishAgentTurn, openAgentTurn } from "../conversation/usage-store.js";
 import { createLogger } from "../shared/logger.js";
 import { runInTurnLogContext } from "../shared/turn-log-context.js";
 import { ganAnhVaoHistory } from "./record-incoming-message.js";
+import { napNoiDungDocxChoBatch } from "./incoming-docx-extractor.js";
 import { replyTargetTuKenh } from "./reply-target-tu-kenh.js";
 import { trichDanTuTin } from "./reply-quote.js";
 import { deliverChatReply } from "./deliver-chat-reply.js";
@@ -151,6 +152,7 @@ async function xuLyLuot(
     // theo chính `localPath`, và ảnh coi như mất hẳn khi URL Zalo hết hạn.
     await luuAnh(config.id, moi);
     ganAnhVaoHistory(moi);
+    await napNoiDungDocxChoBatch(moi);
     return moi;
   };
 
@@ -174,6 +176,7 @@ async function xuLyLuot(
     // tin đã ghi từ lúc NHẬN, giờ mới có đường dẫn ảnh để gắn vào.
     await luuAnh(config.id, batch);
     ganAnhVaoHistory(batch);
+    await napNoiDungDocxChoBatch(batch);
 
     const result = await runAgentTurn({
       api: kenh.api,

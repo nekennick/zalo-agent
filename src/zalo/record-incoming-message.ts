@@ -1,5 +1,6 @@
 import { appendMessage, setMessageImages } from "../conversation/history-store.js";
 import { imagePathsOf, persistBatchImages } from "../conversation/media-store.js";
+import { xuLyDocxTinDen } from "./incoming-docx-extractor.js";
 import { describeForHistory, type ParsedMessage } from "./zalo-message-parser.js";
 
 /**
@@ -68,6 +69,10 @@ export function ghiTinDenVaoHistory(
     void persistBatchImages(accountId, [msg])
       .then(() => setMessageImages(rowId, imagePathsOf(msg.images)))
       .catch(() => {});
+  }
+
+  if (luuAnhNgay) {
+    xuLyDocxTinDen(accountId, msg, rowId);
   }
   return rowId;
 }

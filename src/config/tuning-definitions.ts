@@ -115,9 +115,9 @@ export const TUNING_GROUPS: TuningGroup[] = [
   },
   {
     id: "documents",
-    title: "Tạo file Word/Excel",
-    navHint: "Xuất dữ liệu & báo cáo",
-    hint: "Trần kích thước file và số file mỗi giờ.",
+    title: "Tạo file tài liệu",
+    navHint: "Xuất dữ liệu, báo cáo & NotebookLM",
+    hint: "Trần kích thước file, số file mỗi giờ và cấu hình NotebookLM.",
   },
   {
     id: "video",
@@ -458,6 +458,21 @@ const TUNING_BY_KEY = {
     min: 1,
     max: 50,
     unit: "sheet",
+  },
+  NOTEBOOKLM_ALLOW_EVERYONE: {
+    kind: "boolean",
+    group: "documents",
+    label: "NotebookLM: mọi người dùng được",
+    hint: "Mặc định tắt: chỉ chủ bot (UID trong Allowlist hoặc Zalo ID nhận báo chuyển người thật) gọi được công cụ notebooklm. Bật thì mọi người đang trò chuyện với bot đều dùng được, chịu trần mỗi ngày bên dưới.",
+  },
+  NOTEBOOKLM_MAX_PER_DAY: {
+    kind: "number",
+    group: "documents",
+    label: "Trần NotebookLM mỗi ngày",
+    hint: "Số lần gọi công cụ notebooklm tối đa cho mỗi cuộc trò chuyện trong một ngày (theo múi giờ bot).",
+    min: 1,
+    max: 200,
+    unit: "lượt",
   },
 
   // --- Vẽ ảnh ---

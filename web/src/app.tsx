@@ -13,6 +13,7 @@ import { ContactsPage } from "./pages/contacts-page";
 import { FriendsPage } from "./pages/friends-page";
 import { KnowledgePage } from "./pages/knowledge-page";
 import { LoginPage } from "./pages/login-page";
+import { VietQrPage } from "./pages/vietqr-page";
 import { McpPage } from "./pages/mcp-page";
 import { MemoryPage } from "./pages/memory-page";
 import { OverviewPage } from "./pages/overview-page";
@@ -130,6 +131,7 @@ function DashboardShell() {
             <Route path="/friends" element={<FriendsPage accounts={accounts} />} />
             <Route path="/memory" element={<MemoryPage accounts={accounts} />} />
             <Route path="/knowledge" element={<KnowledgePage />} />
+            <Route path="/vietqr" element={<VietQrPage />} />
             <Route path="/accounts" element={<AccountsPage />} />
             <Route path="/agents" element={<AgentsPage />} />
             {/* Phải đứng TRƯỚC "/agents/:id" - và đường dẫn mở đầu bằng gạch

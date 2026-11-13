@@ -2,48 +2,76 @@ import { tool } from "ai";
 import { z } from "zod";
 import { getSearchSettings } from "../../config/runtime-tool-settings.js";
 import { searchWeb } from "../../shared/web-search-providers.js";
+import { isAcademicQuery, searchArxivQuick, searchWikipediaQuick } from "../../shared/extra-search-providers.js";
 import { locKyTuAn } from "./tag-ky-tu-an.js";
 import { ketQuaLoi } from "./tool-failure-result.js";
 import { wrapUntrustedContent } from "./wrap-untrusted-content.js";
 import { getTuning } from "../../config/runtime-tuning-settings.js";
 
 /**
- * Tìm kiếm web cho agent. Không cần cấu hình gì: DuckDuckGo chạy không key;
- * có BRAVE_SEARCH_API_KEY thì tự dùng Brave trước (kết quả tốt hơn).
+ * Tìm kiếm web đa nguồn cho agent: DuckDuckGo / Brave, tích hợp bách khoa
+ * toàn thư Wikipedia và học thuật arXiv khi được kích hoạt.
  *
- * Kết quả web là DỮ LIỆU không tin cậy - persona đã có quy tắc chung, nhưng
- * vẫn nhắc lại trong khung kết quả vì nội dung trang lạ hoàn toàn có thể chứa
- * chỉ thị prompt injection.
+ * Người dùng yêu cầu không trích dẫn nguồn nên câu trả lời cuối cùng không
+ * chèn link URL.
  */
 export function createWebSearchTool() {
   return tool({
     description:
-      "Tìm kiếm trên web (tin tức, giá cả, sự kiện, thông tin mới sau thời điểm huấn luyện). Trả về danh sách tiêu đề + URL + mô tả ngắn. Muốn đọc chi tiết 1 trang thì gọi tiếp tool web_fetch với URL.",
+      "Tìm kiếm thông tin trên web (tin tức, sự kiện, giá cả, bách khoa toàn thư, học thuật). " +
+      "Dùng thông tin tra được để trả lời người dùng tự nhiên, rõ ràng. " +
+      "LƯU Ý: KHÔNG trích dẫn nguồn hay chèn link (URL) vào câu trả lời trừ khi người dùng chủ động yêu cầu.",
     inputSchema: z.object({
       query: z.string().min(1).max(400).describe("Từ khóa tìm kiếm, giữ ngắn gọn"),
     }),
     execute: async ({ query }) => {
-      // Cấu hình đọc lại mỗi lượt - đổi provider trên dashboard có hiệu lực ngay.
-      // Provider duckduckgo thì không truyền key Brave để chain bỏ qua nó luôn.
       const settings = getSearchSettings();
-      const results = await searchWeb(query, {
-        maxResults: getTuning("WEB_SEARCH_MAX_RESULTS"),
-        braveApiKey: settings.provider === "brave" ? settings.braveApiKey : undefined,
-      });
 
-      if (results.length === 0) {
+      // Gọi đồng thời web search cùng các nguồn bổ trợ được bật
+      const [webResults, wikiResult, arxivResults] = await Promise.all([
+        searchWeb(query, {
+          maxResults: getTuning("WEB_SEARCH_MAX_RESULTS"),
+          braveApiKey: settings.provider === "brave" ? settings.braveApiKey : undefined,
+        }),
+        settings.wikipediaEnabled ? searchWikipediaQuick(query) : Promise.resolve(null),
+        settings.arxivEnabled && isAcademicQuery(query) ? searchArxivQuick(query) : Promise.resolve(null),
+      ]);
+
+      const lines: string[] = [];
+
+      // Nguồn bách khoa Wikipedia nếu tìm thấy
+      if (wikiResult) {
+        lines.push(`[Bách khoa Wikipedia - ${wikiResult.title}]`);
+        lines.push(wikiResult.extract);
+        lines.push("");
+      }
+
+      // Nguồn học thuật arXiv nếu tìm thấy
+      if (arxivResults && arxivResults.length > 0) {
+        lines.push("[Công bố học thuật arXiv]");
+        for (const p of arxivResults) {
+          lines.push(`- ${p.title}: ${p.summary.slice(0, 300)}...`);
+        }
+        lines.push("");
+      }
+
+      // Nguồn web chung
+      if (webResults.length > 0) {
+        lines.push("[Kết quả tìm kiếm web]");
+        webResults.forEach((r, i) => {
+          lines.push(`${i + 1}. ${r.title}${r.snippet ? `: ${r.snippet}` : ""}`);
+        });
+      }
+
+      if (lines.length === 0) {
         return ketQuaLoi(
           "Không tìm thấy kết quả nào (hoặc dịch vụ tìm kiếm đang lỗi). Thử từ khóa khác.",
         );
       }
 
-      const lines = results.map(
-        (r, i) => `${i + 1}. ${r.title}\n   ${r.url}${r.snippet ? `\n   ${r.snippet}` : ""}`,
-      );
-      // Tiêu đề và mô tả trong kết quả tìm kiếm cũng do bên ngoài viết ra - một
-      // trang đặt tiêu đề thành chỉ thị là đủ để thử điều khiển model. Lọc dải
-      // Tags (ASCII smuggling, xem `tag-ky-tu-an.ts`) TRƯỚC khi bọc - nghiên cứu
-      // yêu cầu lọc ở CẢ HAI tầng nạp (KB lẫn web), không chỉ KB.
+      lines.push("");
+      lines.push("HƯỚNG DẪN TRẢ LỜI: Trả lời thông tin trực tiếp, tự nhiên. KHÔNG đính kèm link/URL hay nguồn bài viết vào câu trả lời gửi cho người dùng.");
+
       return wrapUntrustedContent(locKyTuAn(lines.join("\n")), `kết quả tìm kiếm: ${query}`);
     },
   });

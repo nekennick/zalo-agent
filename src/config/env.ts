@@ -178,6 +178,11 @@ const envSchema = z.object({
   DOCUMENT_MAX_SHEETS: z.coerce.number().int().min(1).max(50).default(10),
   // Số file tối đa 1 thread được tạo trong 1 giờ - chặn spam "xuất file" liên tục
   DOCUMENT_MAX_PER_HOUR: z.coerce.number().int().min(1).max(200).default(10),
+  // --- NotebookLM (roomi-fields/notebooklm-mcp qua REST API) ---
+  NOTEBOOKLM_API_URL: z.preprocess(emptyToUndefined, z.string().startsWith("http").optional()),
+  NOTEBOOKLM_API_KEY: z.string().default(""),
+  NOTEBOOKLM_ALLOW_EVERYONE: z.preprocess(emptyToUndefined, z.stringbool().default(false)),
+  NOTEBOOKLM_MAX_PER_DAY: z.coerce.number().int().min(1).max(200).default(10),
 
   // --- Tải video TikTok / Facebook ---
   //

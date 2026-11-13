@@ -108,6 +108,14 @@ export function setMessageImages(messageId: number, images: string[]): void {
   setImagesStmt.run(JSON.stringify(images), messageId);
 }
 
+const setContentStmt = db.prepare(`UPDATE messages SET content = ? WHERE id = ?`);
+
+/** Cập nhật nội dung của tin đã ghi (ví dụ khi trích xuất xong nội dung file .docx) */
+export function setMessageContent(messageId: number, content: string): void {
+  if (!content.trim()) return;
+  setContentStmt.run(content, messageId);
+}
+
 export function getRecentMessages(
   accountId: string,
   threadId: string,

@@ -30,7 +30,7 @@ let kbBinding: typeof import("../../knowledge/kb-agent-binding.js");
 let aiMod: typeof import("ai");
 
 before(async () => {
-  dataDir = setupTestEnv();
+  dataDir = setupTestEnv({ NOTEBOOKLM_API_URL: "http://127.0.0.1:3000" });
   registry = await import("./tool-registry.js");
   visionStore = await import("../../config/runtime-vision-settings.js");
   imageStore = await import("../../config/runtime-image-settings.js");

@@ -1,14 +1,17 @@
 import { getTuning } from "../../config/runtime-tuning-settings.js";
 import { isImageGenConfigured } from "../../config/runtime-image-settings.js";
+import { isNotebookLmConfigured } from "../../notebooklm/notebooklm-client.js";
 import { createAddReactionTool } from "./add-reaction-tool.js";
 import { createExcelFileTool, createWordDocumentTool } from "./create-document-tools.js";
 import { createHandoffToHumanTool } from "./handoff-to-human-tool.js";
 import { createImageTool } from "./create-image-tool.js";
+import { createNotebookLmTool } from "./notebooklm-tool.js";
 import { createScheduleTaskTool } from "./schedule-task-tool.js";
 import { createSaveMemoryTool } from "./save-memory-tool.js";
 import { createSendFileTool } from "./send-file-tool.js";
 import { createTagMemberTool } from "./tag-member-tool.js";
 import { createTaiVideoTool } from "./tai-video-tool.js";
+import { createLookupReceiverTool, createSendPaymentQrTool } from "./vietqr-tools.js";
 import type { ToolDefinition } from "./tool-catalog-types.js";
 
 /**
@@ -139,5 +142,32 @@ export const ACTION_TOOL_DEFINITIONS: ToolDefinition[] = [
       createHandoffToHumanTool(ctx, async (accountId, nguoiNhanId, noiDung) =>
         (await import("../../zalo/handoff-notify.js")).guiBaoChuyenNguoiThat(accountId, nguoiNhanId, noiDung),
       ),
+  },
+  {
+    key: "notebooklm",
+    label: "NotebookLM",
+    description:
+      "Nạp tài liệu vào sổ tay NotebookLM riêng của từng cuộc chat, hỏi đáp có trích dẫn và tạo Audio Overview (MP3), Video, Infographic, Slide, Báo cáo",
+    group: "action",
+    available: () => isNotebookLmConfigured(),
+    unavailableHint: "Thêm NOTEBOOKLM_API_URL vào .env rồi khởi động lại bot để bật công cụ này",
+    runsInScheduledTurn: false,
+    build: (ctx) => createNotebookLmTool(ctx),
+  },
+  {
+    key: "lookup_payment_receiver",
+    label: "Kiểm tra tài khoản thanh toán",
+    description: "Tra cứu thông tin tài khoản ngân hàng của người thanh toán đơn (chị Dung, anh Khoa...) trước khi chốt bill",
+    group: "action",
+    runsInScheduledTurn: false,
+    build: () => createLookupReceiverTool(),
+  },
+  {
+    key: "send_payment_qr",
+    label: "Tạo & gửi mã VietQR",
+    description: "Tạo và gửi mã QR VietQR (ảnh Napas 247) trực tiếp vào nhóm để thành viên quét chuyển khoản đúng số tiền món ăn",
+    group: "action",
+    runsInScheduledTurn: false,
+    build: (ctx) => createSendPaymentQrTool(ctx),
   },
 ];

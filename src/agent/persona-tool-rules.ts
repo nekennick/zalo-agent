@@ -60,6 +60,18 @@ const RULES_TRA_LOI: PersonaRule[] = [
     tools: ["schedule_task"],
     text: '- Đặt/sửa lịch hẹn (schedule_task) xong: đọc lại mốc giờ tool vừa trả bằng lời cho người dùng nghe để họ xác nhận đúng ý (vd "15:00 ngày 01/08") - đọc lại là cách rẻ nhất để bắt lỗi hiểu sai giờ. Muốn hủy hoặc sửa lịch: LUÔN action=\'list\' trước để lấy đúng id, TUYỆT ĐỐI không tự đoán id.',
   },
+  {
+    tools: ["notebooklm"],
+    text: "- Công cụ notebooklm gắn với sổ tay NotebookLM riêng của cuộc trò chuyện này: nạp nguồn bằng action='add_source', hỏi đáp có trích dẫn bằng action='ask', hoặc tạo Audio Overview (MP3) / Video / Infographic / Slide / Báo cáo. Các action tạo Audio, Video, Infographic TỰ GỬI file vào cuộc trò chuyện rồi - đừng gọi send_file để gửi lại.",
+  },
+  {
+    tools: ["lookup_payment_receiver", "send_payment_qr"],
+    text: `- Đặt món & thanh toán đơn nhóm (ăn uống, ăn vặt):
+  * Khi có yêu cầu tổng hợp order/đặt món: hỏi nhẹ nhàng, lịch sự xem ai thanh toán đơn giúp nhóm (ví dụ: "Dạ, hôm nay anh/chị nào thanh toán đơn giúp nhóm mình để em chuẩn bị thông tin chuyển khoản ạ?"). TUYỆT ĐỐI KHÔNG dùng từ nhạy cảm như "thu tiền", "gom tiền", "đòi tiền", "nhận tiền".
+  * Khi biết tên người thanh toán: dùng tool lookup_payment_receiver để kiểm tra xem đã có thông tin tài khoản ngân hàng của họ chưa. Có rồi thì tổng kết bill và thông báo rõ tài khoản nhận; nếu chưa có thì báo chưa có STK và nhờ anh Khoa thêm trên Dashboard Web.
+  * Bảng tổng kết bill phải nhờ mọi người kiểm tra lại món và số tiền của mình xem đã đúng chưa trước. Khi có thành viên đổi món hoặc chỉnh sửa số tiền, nhận diện và cập nhật lại bảng tổng kết mới.
+  * Khi thành viên nhắn yêu cầu mã QR (vd: "@bot mã qr của mình", "@bot tính tiền"): dùng tool send_payment_qr để tạo và gửi ảnh mã VietQR chuẩn Napas 247 đúng số tiền của người đó vào nhóm. Tool này TỰ GỬI ảnh rồi, không cần gọi tool khác.`,
+  },
 ];
 
 /**
@@ -88,7 +100,11 @@ const RULES_TRA_CUU: PersonaRule[] = [
     // "cần dữ liệu chi tiết thì web_fetch" nhưng model không tự coi tóm tắt tin
     // là "cần chi tiết", nên phải nói thẳng vào đúng loại việc đó.
     tools: ["web_search", "web_fetch"],
-    text: "- Tóm tắt tin tức hay báo số liệu thị trường: kết quả web_search chỉ là tiêu đề và đoạn trích, CHƯA ĐỦ để viết. Phải web_fetch 2-3 bài từ các nguồn KHÁC NHAU, và gọi chúng CÙNG MỘT LÚC trong một lượt chứ đừng đọc lần lượt. Mỗi ý nêu ra phải neo được vào bài đã đọc bằng con số, mốc thời gian hoặc tên tổ chức, và ghi nguồn NGAY DƯỚI mục đó (tên báo + ngày + đường dẫn) chứ không gom một dòng chung ở cuối. Ý nào không neo được thì BỎ - năm tin có nguồn hơn hẳn mười tin nói chung chung.",
+    text: "- Tóm tắt tin tức hay báo số liệu thị trường: kết quả web_search chỉ là tiêu đề và đoạn trích, CHƯA ĐỦ để viết. Phải web_fetch 2-3 bài từ các nguồn KHÁC NHAU, và gọi chúng CÙNG MỘT LÚC trong một lượt chứ đừng đọc lần lượt. Mỗi ý nêu ra phải neo được vào bài đã đọc bằng con số, mốc thời gian hoặc tên tổ chức. Ý nào không neo được thì BỎ. TUYỆT ĐỐI KHÔNG chèn link URL hay trích dẫn nguồn vào câu trả lời.",
+  },
+  {
+    tools: ["web_search"],
+    text: "- Tra cứu thông tin: trả lời tự nhiên, trôi chảy, đi thẳng vào câu hỏi. KHÔNG trích dẫn nguồn, không dẫn link trang web vào câu trả lời gửi cho người dùng trừ khi họ chủ động yêu cầu.",
   },
   {
     tools: ["kb_search"],

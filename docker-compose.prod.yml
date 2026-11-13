@@ -33,6 +33,7 @@ services:
     # ngay; muốn đặt ra đường dẫn ngoài thì đổi ZALO_AGENT_DATA_DIR.
     volumes:
       - "${ZALO_AGENT_DATA_DIR:-zalo-agent-data}:/data"
+      - "notebooklm-mcp-data:/data/notebooklm"
 
     security_opt:
       - no-new-privileges:true
@@ -115,5 +116,94 @@ services:
       # dashboard trả lời - 20s là đo dư cho máy nhỏ.
       start_period: 20s
 
+  notebooklm-mcp:
+    build:
+      context: https://github.com/roomi-fields/notebooklm-mcp.git#main
+      dockerfile: Dockerfile
+    image: notebooklm-mcp:latest
+    container_name: notebooklm-mcp
+    restart: unless-stopped
+    shm_size: "1gb"
+    ports:
+      - "127.0.0.1:${NOTEBOOKLM_HOST_PORT:-3090}:3000"
+      - "${NOTEBOOKLM_VNC_BIND_IP:-127.0.0.1}:${NOTEBOOKLM_VNC_PORT:-6080}:6080"
+    environment:
+      - NODE_ENV=production
+      - HTTP_PORT=3000
+      - HTTP_HOST=0.0.0.0
+      - HEADLESS=true
+      - STEALTH_ENABLED=true
+      - DATA_DIR=/data
+      - NOTEBOOKLM_UI_LOCALE=en
+      - NOTEBOOKLM_CONTENT_LANGUAGE=vi
+      - NOTEBOOKLM_ALLOWED_HOSTS=notebooklm-mcp,localhost,127.0.0.1
+      - NOTEBOOKLM_API_KEY=${NOTEBOOKLM_API_KEY}
+    volumes:
+      - "notebooklm-mcp-data:/data"
+    deploy:
+      resources:
+        limits:
+          memory: 2G
+        reservations:
+          memory: 512M
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "node",
+          "-e",
+          "require('http').get('http://127.0.0.1:3000/health',r=>process.exit(r.statusCode<400?0:1)).on('error',()=>process.exit(1))",
+        ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+
+  9router:
+    image: decolua/9router:latest
+    container_name: 9router
+    restart: unless-stopped
+    ports:
+      - "0.0.0.0:${ROUTER_HOST_PORT:-20128}:20128"
+    environment:
+      - NODE_ENV=production
+      - PORT=20128
+      - HOSTNAME=0.0.0.0
+      - DATA_DIR=/app/data
+      - NEXT_TELEMETRY_DISABLED=1
+    volumes:
+      - "9router-data:/app/data"
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+        reservations:
+          memory: 256M
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "node",
+          "-e",
+          "require('http').get('http://127.0.0.1:20128/api/health',r=>process.exit(r.statusCode<400?0:1)).on('error',()=>process.exit(1))",
+        ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 20s
+
 volumes:
   zalo-agent-data:
+    external: true
+  notebooklm-mcp-data:
+  9router-data:

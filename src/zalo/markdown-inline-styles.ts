@@ -28,12 +28,14 @@ export const MOC = "\u0001";
  *
  * Thứ tự QUAN TRỌNG: dấu dài đứng trước dấu ngắn, không thì `**` bị `*` ăn mất.
  */
-const CAP_DAU: { regex: RegExp; style: TextStyle }[] = [
-  { regex: /\*\*\*([^*\n]+)\*\*\*/g, style: TextStyle.Bold }, // Zalo không chồng được đậm+nghiêng
-  { regex: /\*\*([^*\n]+)\*\*/g, style: TextStyle.Bold },
-  { regex: /~~([^~\n]+)~~/g, style: TextStyle.StrikeThrough },
-  { regex: /`([^`\n]+)`/g, style: TextStyle.Bold }, // Zalo không có font mono
-  { regex: /(?<![*\w])\*(?!\*)([^*\n]+?)\*(?!\*)(?!\w)/g, style: TextStyle.Italic },
+const CAP_DAU: { regex: RegExp; styles: TextStyle[] }[] = [
+  // ***: Màu Cam In Đậm (Quy tắc nhấn mạnh từ khóa cốt lõi, mốc thời gian, số đặc biệt)
+  { regex: /\*\*\*([^*\n]+)\*\*\*/g, styles: [TextStyle.Orange, TextStyle.Bold] },
+  // **: In Đậm Đen thường
+  { regex: /\*\*([^*\n]+)\*\*/g, styles: [TextStyle.Bold] },
+  { regex: /~~([^~\n]+)~~/g, styles: [TextStyle.StrikeThrough] },
+  { regex: /`([^`\n]+)`/g, styles: [TextStyle.Bold] }, // Zalo không có font mono
+  { regex: /(?<![*\w])\*(?!\*)([^*\n]+?)\*(?!\*)(?!\w)/g, styles: [TextStyle.Italic] },
   // Màu và gạch chân: markdown KHÔNG có cú pháp cho hai thứ này nên phải tự đặt
   // quy ước. Dùng thẻ kiểu HTML vì model quen viết, và vì lớp ký tự phủ định
   // `[^<\n]` giữ biểu thức tuyến tính - không thẻ nào lồng trong thẻ nào được,
@@ -44,11 +46,11 @@ const CAP_DAU: { regex: RegExp; style: TextStyle }[] = [
   //
   // Cả 4 màu + gạch chân đã ĐO THẬT trên cả Zalo Web lẫn điện thoại: hiện y hệt
   // nhau, kể cả khi chồng với đậm hoặc nghiêng.
-  { regex: /<do>([^<\n]+)<\/do>/gi, style: TextStyle.Red },
-  { regex: /<cam>([^<\n]+)<\/cam>/gi, style: TextStyle.Orange },
-  { regex: /<vang>([^<\n]+)<\/vang>/gi, style: TextStyle.Yellow },
-  { regex: /<xanh>([^<\n]+)<\/xanh>/gi, style: TextStyle.Green },
-  { regex: /<gach>([^<\n]+)<\/gach>/gi, style: TextStyle.Underline },
+  { regex: /<do>([^<\n]+)<\/do>/gi, styles: [TextStyle.Red] },
+  { regex: /<cam>([^<\n]+)<\/cam>/gi, styles: [TextStyle.Orange] },
+  { regex: /<vang>([^<\n]+)<\/vang>/gi, styles: [TextStyle.Yellow] },
+  { regex: /<xanh>([^<\n]+)<\/xanh>/gi, styles: [TextStyle.Green] },
+  { regex: /<gach>([^<\n]+)<\/gach>/gi, styles: [TextStyle.Underline] },
 ];
 
 export type SpanInline = { start: number; len: number; st: Exclude<TextStyle, TextStyle.Indent> };
@@ -84,15 +86,15 @@ export function apDungInline(dong: string): { text: string; spans: SpanInline[] 
   return { text, spans };
 }
 
-type MucDaCat = { noiDung: string; style: TextStyle };
+type MucDaCat = { noiDung: string; styles: TextStyle[] };
 
 /** Thay mọi đoạn khớp bằng token, cất nội dung vào `cat`. Trả chuỗi đã token hóa. */
 function tokenHoa(chuoi: string, cat: MucDaCat[]): string {
   let tam = chuoi;
-  for (const { regex, style } of CAP_DAU) {
+  for (const { regex, styles } of CAP_DAU) {
     tam = tam.replace(regex, (_ca, noiDung: string) => {
       const n = cat.length;
-      cat.push({ noiDung, style });
+      cat.push({ noiDung, styles });
       return `${MOC}${n}${MOC}`;
     });
   }
@@ -123,7 +125,9 @@ function moRong(chuoi: string, cat: MucDaCat[], goc: number, spans: SpanInline[]
     }
     const batDau = goc + ra.length;
     const trong = moRong(muc.noiDung, cat, batDau, spans);
-    spans.push({ start: batDau, len: trong.length, st: muc.style as SpanInline["st"] });
+    for (const st of muc.styles) {
+      spans.push({ start: batDau, len: trong.length, st: st as SpanInline["st"] });
+    }
     ra += trong;
     i = het + 1;
   }

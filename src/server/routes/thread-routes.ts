@@ -5,6 +5,7 @@ import {
   getThreadSummary,
   listThreads,
   setBotEnabled,
+  setThreadAdminShare,
   setThreadSummary,
 } from "../../conversation/thread-store.js";
 import { getThreadUsageTotals } from "../../conversation/usage-store.js";
@@ -49,13 +50,40 @@ export const threadRoutes = new Hono()
   })
 
   .patch("/:threadId", async (c) => {
-    const bodySchema = z.object({ accountId: z.string().min(1), botEnabled: z.boolean() });
+    const bodySchema = z.object({
+      accountId: z.string().min(1),
+      botEnabled: z.boolean().optional(),
+      shareAdminContext: z.boolean().optional(),
+    });
     const parsed = bodySchema.safeParse(await c.req.json().catch(() => null));
-    if (!parsed.success) return c.json({ error: "Body cần { accountId, botEnabled }" }, 400);
+    if (!parsed.success) {
+      return c.json({ error: "Body cần { accountId, botEnabled? hoặc shareAdminContext? }" }, 400);
+    }
 
-    const ok = setBotEnabled(parsed.data.accountId, c.req.param("threadId"), parsed.data.botEnabled);
+    const threadId = c.req.param("threadId");
+    const { accountId, botEnabled, shareAdminContext } = parsed.data;
+
+    if (botEnabled !== undefined) {
+      const ok = setBotEnabled(accountId, threadId, botEnabled);
+      if (!ok) return c.json({ error: "Thread không tồn tại" }, 404);
+    }
+
+    if (shareAdminContext !== undefined) {
+      const ok = setThreadAdminShare(accountId, threadId, shareAdminContext);
+      if (!ok) return c.json({ error: "Thread không tồn tại" }, 404);
+    }
+
+    return c.json({ ok: true, botEnabled, shareAdminContext });
+  })
+
+  .patch("/:threadId/admin-share", async (c) => {
+    const bodySchema = z.object({ accountId: z.string().min(1), enabled: z.boolean() });
+    const parsed = bodySchema.safeParse(await c.req.json().catch(() => null));
+    if (!parsed.success) return c.json({ error: "Body cần { accountId, enabled }" }, 400);
+
+    const ok = setThreadAdminShare(parsed.data.accountId, c.req.param("threadId"), parsed.data.enabled);
     if (!ok) return c.json({ error: "Thread không tồn tại" }, 404);
-    return c.json({ ok: true, botEnabled: parsed.data.botEnabled });
+    return c.json({ ok: true, shareAdminContext: parsed.data.enabled });
   })
 
   /**

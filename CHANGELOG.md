@@ -62,6 +62,8 @@ Bản `0.x` nghĩa là API và cấu hình còn có thể đổi giữa các b�
 
 ### Thêm
 
+- **Công cụ `notebooklm` (mục 14.4)**: kết nối REST tới container `roomi-fields/notebooklm-mcp` (`NOTEBOOKLM_API_URL`, `NOTEBOOKLM_API_KEY`), tự ánh xạ sổ tay NotebookLM riêng cho từng cuộc trò chuyện (`thread_notebooks`), nạp nguồn (`add_source`: URL, YouTube, văn bản), xem nguồn (`list_sources`), hỏi đáp có trích dẫn (`ask`), tạo báo cáo (`generate_report`), Slide Google Slides (`generate_slides`), Infographic PNG (`generate_infographic`), Video MP4 (`generate_video`) và Audio Overview (`generate_audio` — tự đổi M4A/WAV sang MP3 bằng `ffmpeg` trước khi gửi lên Zalo). Mặc định chỉ chủ bot gọi được; thêm công tắc `NOTEBOOKLM_ALLOW_EVERYONE` ("NotebookLM: mọi người dùng được") và trần `NOTEBOOKLM_MAX_PER_DAY` ở nhóm Cấu hình > "Tạo file tài liệu".
+
 - **Tag tên (@người) cho hộp thư đi**: `--mention <uid>` / `<uid>=<Tên>` / `all` (chỉ tin nhóm, tối đa 20).
   Chưa có `@Tên` trong chữ thì tự chèn ở đầu tin; vị trí tag nằm trong mã duyệt, sửa chữ sau khi duyệt thì không gửi.
 
