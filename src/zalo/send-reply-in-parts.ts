@@ -1,7 +1,8 @@
-import type { API, SendMessageQuote, Style, ThreadType } from "zca-js";
+import type { API, Mention, SendMessageQuote, Style, ThreadType } from "zca-js";
 import { enqueueSend } from "../middleware/rate-limiter.js";
 import { createLogger } from "../shared/logger.js";
 import { trichDanTrongNganSach } from "./reply-quote.js";
+import type { MentionReceiver } from "./reply-mention.js";
 import { chiaTheoNganSachByte, demDoanBoDinhDang } from "./split-styled-message.js";
 import { getTuning } from "../config/runtime-tuning-settings.js";
 
@@ -55,6 +56,7 @@ export type DoanCanGui = {
   text: string;
   styles?: Style[];
   quote?: SendMessageQuote;
+  mentions?: Mention[];
 };
 
 export type ReplyTarget = {
@@ -92,6 +94,13 @@ export type ReplyTarget = {
    * - job theo lịch không trả lời tin nào cả.
    */
   quote?: SendMessageQuote;
+  /**
+   * Người mở lượt cần được tag (@mention) khi trả lời trong nhóm. Chỉ ĐOẠN ĐẦU
+   * của câu trả lời mang mention.
+   */
+  mentionMember?: MentionReceiver;
+  /** Danh sách mentions đã chuẩn bị sẵn (nếu caller muốn tự gán) */
+  mentions?: Mention[];
 };
 
 export type ReplyResult = {
@@ -116,8 +125,16 @@ function sendOne(
   text: string,
   styles?: Style[],
   quote?: SendMessageQuote,
+  mentions?: Mention[],
 ): Promise<unknown> {
-  return enqueueSend(target.threadKey, () => target.guiMotDoan({ text, styles, quote }));
+  return enqueueSend(target.threadKey, () =>
+    target.guiMotDoan({
+      text,
+      styles,
+      quote,
+      ...(mentions && mentions.length > 0 ? { mentions } : {}),
+    }),
+  );
 }
 
 /**
@@ -136,12 +153,13 @@ export function duongGuiZcaJs(
   threadId: string,
   threadType: ThreadType,
 ): (doan: DoanCanGui) => Promise<unknown> {
-  return ({ text, styles, quote }) =>
+  return ({ text, styles, quote, mentions }) =>
     api.sendMessage(
       {
         msg: text,
         ...(styles && styles.length > 0 ? { styles } : {}),
         ...(quote ? { quote } : {}),
+        ...(mentions && mentions.length > 0 ? { mentions } : {}),
       },
       threadId,
       threadType,
@@ -184,18 +202,25 @@ async function sendOneCoDuongLui(
   text: string,
   styles: Style[],
   quote?: SendMessageQuote,
+  mentions?: Mention[],
 ): Promise<unknown> {
   try {
-    return await sendOne(target, text, styles, quote);
+    return await sendOne(target, text, styles, quote, mentions);
   } catch (err) {
-    const coCaiDeBo = styles.length > 0 || quote !== undefined;
+    const coCaiDeBo = styles.length > 0 || quote !== undefined || (mentions && mentions.length > 0);
     if (!coCaiDeBo || !laLoiMayChuTuChoi(err)) throw err;
 
     // WARN chứ không debug: mất định dạng là hỏng thầm lặng, người vận hành
     // phải thấy được để còn lần ra tổ hợp style nào bị Zalo chê.
     log.warn(
-      { threadId: target.threadId, soStyle: styles.length, coTrichDan: quote !== undefined, err },
-      "Zalo từ chối tin - gửi lại dạng chữ trơn, không định dạng và không trích dẫn",
+      {
+        threadId: target.threadId,
+        soStyle: styles.length,
+        coTrichDan: quote !== undefined,
+        coMention: Boolean(mentions && mentions.length > 0),
+        err,
+      },
+      "Zalo từ chối tin - gửi lại dạng chữ trơn, không định dạng, không trích dẫn và không mention",
     );
     return await sendOne(target, text);
   }
@@ -213,6 +238,7 @@ export async function sendReplyInParts(
   target: ReplyTarget,
   text: string,
   styles: Style[] = [],
+  mentions?: Mention[],
 ): Promise<ReplyResult> {
   // Kênh không mang định dạng (Bot API) thì `styles` sẽ bị đường gửi vứt ở
   // phút chót. Vứt Ở ĐÂY, TRƯỚC bộ cắt, vì hai lý do:
@@ -282,11 +308,21 @@ export async function sendReplyInParts(
   }
 
   const delivered: string[] = [];
+  // Nếu caller không truyền mentions riêng nhưng target có khai sẵn mentions
+  const mentionsCanGui = mentions ?? target.mentions;
+
   for (const part of parts) {
     try {
-      // Chỉ đoạn ĐẦU trích dẫn: các đoạn sau là phần nối tiếp của cùng một câu
-      // trả lời, trích lại ở mỗi đoạn thì khối trích dẫn lặp đầy màn hình
-      await sendOneCoDuongLui(target, part.text, part.styles, delivered.length === 0 ? trichDan.quote : undefined);
+      const isFirstPart = delivered.length === 0;
+      // Chỉ đoạn ĐẦU trích dẫn và tag mention: các đoạn sau là phần nối tiếp của cùng
+      // một câu trả lời, lặp lại ở mỗi đoạn thì vừa rối màn hình vừa gửi trùng thông báo
+      await sendOneCoDuongLui(
+        target,
+        part.text,
+        part.styles,
+        isFirstPart ? trichDan.quote : undefined,
+        isFirstPart ? mentionsCanGui : undefined,
+      );
       delivered.push(part.text);
     } catch (err) {
       log.error(

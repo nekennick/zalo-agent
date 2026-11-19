@@ -179,12 +179,12 @@ describe("nhiều người nhắn trong một nhóm", () => {
 
     assert.equal(daGui.length, 3, `mong 3 câu trả lời riêng, nhận ${daGui.length}`);
 
-    // Mỗi câu trả lời phải trích tin của ĐÚNG người mà nó đang trả lời
+    // Mỗi câu trả lời phải trích tin của ĐÚNG người mà nó đang trả lời, kèm @mention
     const cap = daGui.map((g) => `${g.quote?.uidFrom} <- ${g.msg}`).sort();
     assert.deepEqual(cap, [
-      "u-Hải <- trả lời cho Hải",
-      "u-Lan <- trả lời cho Lan",
-      "u-Nam <- trả lời cho Nam",
+      "u-Hải <- @Hải trả lời cho Hải",
+      "u-Lan <- @Lan trả lời cho Lan",
+      "u-Nam <- @Nam trả lời cho Nam",
     ]);
   });
 

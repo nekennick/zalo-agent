@@ -1,14 +1,23 @@
 import assert from "node:assert/strict";
-import { describe, it } from "node:test";
+import { after, before, describe, it } from "node:test";
 import { ThreadType } from "zca-js";
+import { cleanupTestEnv, setupTestEnv } from "../shared/test-env-setup.js";
 import { docxChiCoAnh, docxTuXml } from "../knowledge/ooxml-zip-test-helper.js";
-import {
-  laFileDocx,
-  napNoiDungDocxChoBatch,
-  trichXuatDocxTuUrl,
-} from "./incoming-docx-extractor.js";
 import type { ParsedMessage } from "./zalo-message-parser.js";
 import type { RemoteFile } from "../shared/safe-remote-download.js";
+
+let dataDir: string;
+let extractor: typeof import("./incoming-docx-extractor.js");
+
+before(async () => {
+  dataDir = setupTestEnv();
+  extractor = await import("./incoming-docx-extractor.js");
+});
+
+after(async () => {
+  (await import("../conversation/database.js")).closeDatabase();
+  cleanupTestEnv(dataDir);
+});
 
 function taoTinDocx(o: {
   ten: string;
@@ -39,23 +48,23 @@ function taoTinDocx(o: {
 
 describe("incoming-docx-extractor - nhận diện file docx", () => {
   it("nhận diện đúng đuôi .docx và .DOCX", () => {
-    assert.equal(laFileDocx(taoTinDocx({ ten: "bao-gia.docx", url: "https://file-stal-1.dlfl.vn/x" })), true);
-    assert.equal(laFileDocx(taoTinDocx({ ten: "BAO_GIA.DOCX", url: "https://file-stal-1.dlfl.vn/x" })), true);
+    assert.equal(extractor.laFileDocx(taoTinDocx({ ten: "bao-gia.docx", url: "https://file-stal-1.dlfl.vn/x" })), true);
+    assert.equal(extractor.laFileDocx(taoTinDocx({ ten: "BAO_GIA.DOCX", url: "https://file-stal-1.dlfl.vn/x" })), true);
   });
 
   it("từ chối các định dạng khác hoặc thiếu đính kèm", () => {
-    assert.equal(laFileDocx(taoTinDocx({ ten: "bao-gia.pdf", url: "https://file-stal-1.dlfl.vn/x" })), false);
-    assert.equal(laFileDocx(taoTinDocx({ ten: "bao-gia.xlsx", url: "https://file-stal-1.dlfl.vn/x" })), false);
-    assert.equal(laFileDocx(taoTinDocx({ ten: "bao-gia.doc", url: "https://file-stal-1.dlfl.vn/x" })), false);
+    assert.equal(extractor.laFileDocx(taoTinDocx({ ten: "bao-gia.pdf", url: "https://file-stal-1.dlfl.vn/x" })), false);
+    assert.equal(extractor.laFileDocx(taoTinDocx({ ten: "bao-gia.xlsx", url: "https://file-stal-1.dlfl.vn/x" })), false);
+    assert.equal(extractor.laFileDocx(taoTinDocx({ ten: "bao-gia.doc", url: "https://file-stal-1.dlfl.vn/x" })), false);
     const tinKhongDk = taoTinDocx({ ten: "x.docx", url: "" });
     tinKhongDk.dinhKem = undefined;
-    assert.equal(laFileDocx(tinKhongDk), false);
+    assert.equal(extractor.laFileDocx(tinKhongDk), false);
   });
 });
 
 describe("incoming-docx-extractor - trích xuất nội dung", () => {
   it("từ chối URL không thuộc CDN Zalo", async () => {
-    const ketQua = await trichXuatDocxTuUrl("https://evil.example.com/malicious.docx", "malicious.docx");
+    const ketQua = await extractor.trichXuatDocxTuUrl("https://evil.example.com/malicious.docx", "malicious.docx");
     assert.match(ketQua, /URL không thuộc CDN Zalo/);
   });
 
@@ -65,7 +74,7 @@ describe("incoming-docx-extractor - trích xuất nội dung", () => {
       mediaType: "application/octet-stream",
       fileName: "not-zip.docx",
     });
-    const ketQua = await trichXuatDocxTuUrl("https://file-stal-1.dlfl.vn/not-a-file", "test.docx", mockTai);
+    const ketQua = await extractor.trichXuatDocxTuUrl("https://file-stal-1.dlfl.vn/not-a-file", "test.docx", mockTai);
     assert.match(ketQua, /Định dạng file không hợp lệ/);
   });
 });
@@ -85,7 +94,7 @@ describe("incoming-docx-extractor - nạp nội dung cho batch", () => {
       text: "bao-gia-panel.docx",
     });
 
-    await napNoiDungDocxChoBatch([msg], mockTai);
+    await extractor.napNoiDungDocxChoBatch([msg], mockTai);
 
     assert.match(msg.text, /Bảng báo giá 50 tấm panel Yagami/);
     assert.match(msg.text, /BẮT ĐẦU NỘI DUNG FILE WORD/);
@@ -106,7 +115,7 @@ describe("incoming-docx-extractor - nạp nội dung cho batch", () => {
       text: "@Khoa - Phiên Bản Agent kiểm tra hợp đồng này giúp anh",
     });
 
-    await napNoiDungDocxChoBatch([msg], mockTai);
+    await extractor.napNoiDungDocxChoBatch([msg], mockTai);
 
     assert.match(msg.text, /@Khoa - Phiên Bản Agent kiểm tra hợp đồng này giúp anh/);
     assert.match(msg.text, /Nội dung hợp đồng/);
@@ -125,7 +134,7 @@ describe("incoming-docx-extractor - nạp nội dung cho batch", () => {
       url: "https://file-stal-1.dlfl.vn/chi-co-anh.docx",
     });
 
-    await napNoiDungDocxChoBatch([msg], mockTai);
+    await extractor.napNoiDungDocxChoBatch([msg], mockTai);
 
     assert.match(msg.text, /Không đọc được chữ nào từ file docx|chỉ chứa ảnh/);
   });
@@ -153,7 +162,7 @@ describe("incoming-docx-extractor - nạp nội dung cho batch", () => {
       },
     };
 
-    await napNoiDungDocxChoBatch([msg], mockTai);
+    await extractor.napNoiDungDocxChoBatch([msg], mockTai);
 
     assert.match(msg.text, /@Khoa - Phiên Bản Agent đọc trong file này nè/);
     assert.match(msg.text, /120 tấm panel tôn xốp/);

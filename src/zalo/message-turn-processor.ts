@@ -17,6 +17,7 @@ import { ganAnhVaoHistory } from "./record-incoming-message.js";
 import { napNoiDungDocxChoBatch } from "./incoming-docx-extractor.js";
 import { replyTargetTuKenh } from "./reply-target-tu-kenh.js";
 import { trichDanTuTin } from "./reply-quote.js";
+import { trichNguoiNhanMention } from "./reply-mention.js";
 import { deliverChatReply } from "./deliver-chat-reply.js";
 import { notifyTechnicalError, type ReplyTarget } from "./send-reply-in-parts.js";
 import type { ParsedMessage } from "./zalo-message-parser.js";
@@ -88,6 +89,8 @@ async function xuLyLuot(
     // khác nhau: reaction là phản hồi tin VỪA tới, trích dẫn là chỉ ra tin
     // ĐANG được trả lời. `trichDanTuTin` tự bỏ qua chat riêng.
     quote: trichDanTuTin(batch[0]!),
+    // Tag đích danh người mở lượt nhắn trong nhóm ở tin đầu tiên của câu trả lời
+    mentionMember: trichNguoiNhanMention(batch[0]!),
   };
 
   // Mảng do CHỖ NÀY sở hữu: agent-loop chỉ push vào. Lượt ném lỗi vẫn còn đủ

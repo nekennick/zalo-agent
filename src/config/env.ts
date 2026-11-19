@@ -280,6 +280,8 @@ const envSchema = z.object({
   // Để 2000 cho có biên (phòng khi Zalo tính theo BYTE - tiếng Việt 1 ký tự
   // ~1.4 byte). Nâng lên thì ít tin hơn nhưng gần ngưỡng vỡ hơn.
   ZALO_RICH_TEXT_ENABLED: z.preprocess(emptyToUndefined, z.stringbool().default(true)),
+  // Tự động gắn tag (@mention) người nhắn ở tin đầu tiên khi trả lời trong nhóm
+  GROUP_AUTO_MENTION_ENABLED: z.preprocess(emptyToUndefined, z.stringbool().default(true)),
   // 2800 chứ không phải 3000: mốc cao nhất ĐO ĐƯỢC là gửi được là 2867 byte,
   // mốc thấp nhất đo được là bị chối là 3712. Lấy ngay dưới mốc đã chứng minh
   // thay vì đoán giữa khoảng - phần dư dành cho sai số giữa JSON mình tính và

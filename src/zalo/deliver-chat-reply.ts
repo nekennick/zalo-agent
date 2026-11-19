@@ -1,6 +1,8 @@
 import { appendMessage } from "../conversation/history-store.js";
+import { getTuning } from "../config/runtime-tuning-settings.js";
 import { createLogger } from "../shared/logger.js";
 import { dinhDangNeuBat, lamSachTheoCauHinh } from "./prepare-outgoing-text.js";
+import { ganMentionDauCau } from "./reply-mention.js";
 import { notifyTechnicalError, sendReplyInParts, type ReplyTarget } from "./send-reply-in-parts.js";
 
 /**
@@ -61,8 +63,16 @@ export async function deliverChatReply(
     return { daGui: "", hong: false };
   }
 
+  // Tự động tag đích danh người mở lượt nhắn trong nhóm (nếu cấu hình bật).
+  // Đặt sau bước dịch markdown để không làm vỡ các quy tắc khối (như Heading ##).
+  const autoMentionBat = getTuning("GROUP_AUTO_MENTION_ENABLED");
+  const { text: textCuoi, styles: stylesCuoi, mentions } =
+    autoMentionBat && target.mentionMember
+      ? ganMentionDauCau({ text: chuGui, styles, member: target.mentionMember })
+      : { text: chuGui, styles, mentions: target.mentions ?? [] };
+
   // Tin dài bị Zalo chặn (error_code 118) nên phải cắt thành nhiều đoạn
-  const reply = await sendReplyInParts(target, chuGui, styles);
+  const reply = await sendReplyInParts(target, textCuoi, stylesCuoi, mentions);
 
   // Chỉ ghi phần ĐÃ gửi được: history phải khớp cái người dùng nhìn thấy. Ghi
   // chữ ĐÃ LÀM SẠCH chứ không phải chữ gốc - lệch thì lượt sau model đọc lại

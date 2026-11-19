@@ -208,12 +208,12 @@ describe("processBatch - làm sạch đầu ra trước khi gửi", () => {
     assert.ok(text.includes("- Cà phê: 45.000"), `mất ký tự gạch đầu dòng: ${text}`);
     assert.ok(text.includes("- Trà: 30.000"), "dòng thứ hai cũng phải giữ dấu gạch");
 
-    // Vẫn phải còn in đậm bên TRONG dòng danh sách
+    // Vẫn phải còn in đậm bên TRONG dòng danh sách (nhãn và giá trị)
     const styles = daGuiStyle[0] as { start: number; len: number; st: string }[] | undefined;
     assert.ok(styles, "in đậm trong dòng danh sách phải tới nơi");
     assert.deepEqual(
       styles.map((s) => text.slice(s.start, s.start + s.len)),
-      ["45.000"],
+      ["Cà phê", "45.000", "Trà"],
     );
   });
 });

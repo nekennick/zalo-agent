@@ -43,6 +43,7 @@ export function setupTestEnv(overrides: Record<string, string> = {}): string {
 
     // Test chạy như chạy local: không tin X-Forwarded-For, cookie không cần Secure
     DASHBOARD_BEHIND_PROXY: "false",
+    DASHBOARD_PASSWORD: "test-password-123",
 
     CREDENTIALS_ENCRYPTION_KEY: "0".repeat(64),
 

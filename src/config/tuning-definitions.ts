@@ -525,6 +525,12 @@ const TUNING_BY_KEY = {
     label: "Định dạng chữ trên Zalo",
     hint: "Dịch in đậm, tiêu đề, danh sách của model thành định dạng thật của Zalo thay vì xóa đi. Tắt thì quay lại chữ phẳng.",
   },
+  GROUP_AUTO_MENTION_ENABLED: {
+    kind: "boolean",
+    group: "sending",
+    label: "Tự động tag người nhắn trong nhóm",
+    hint: "Khi trả lời trong nhóm chat, tự động gắn thẻ (@mention) người mở lượt nhắn ở tin đầu tiên để họ nhận thông báo.",
+  },
   ZALO_RICH_TEXT_MAX_PAYLOAD_BYTES: {
     kind: "number",
     group: "sending",
