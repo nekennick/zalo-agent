@@ -74,7 +74,7 @@ export function createSendPaymentQrTool(ctx: ToolContext) {
       caption: z
         .string()
         .optional()
-        .describe("Lời nhắn kèm ảnh QR lịch sự, nhẹ nhàng gửi cho người thanh toán"),
+        .describe("Lời nhắn kèm ảnh QR cực kỳ ngắn gọn, súc tích (ví dụ: 'Mã QR phần anh Kiệt ạ')"),
     }),
     execute: async ({ receiver_name, amount, memo, caption }) => {
       if (!api) {
