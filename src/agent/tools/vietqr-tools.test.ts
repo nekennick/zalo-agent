@@ -8,12 +8,14 @@ import type { ToolContext } from "./index.js";
 
 let dataDir: string;
 let vietQrTools: typeof import("./vietqr-tools.js");
+let lookupReceiverTool: typeof import("./lookup-receiver-tool.js");
 let database: typeof import("../../conversation/database.js");
 
 before(async () => {
   dataDir = setupTestEnv();
   database = await import("../../conversation/database.js");
   vietQrTools = await import("./vietqr-tools.js");
+  lookupReceiverTool = await import("./lookup-receiver-tool.js");
 });
 
 after(() => {
@@ -86,7 +88,7 @@ const mockOptions = { toolCallId: "1", messages: [] } as any;
 
 describe("vietqr-tools", () => {
   it("lookup_payment_receiver tìm thấy tài khoản đã lưu", async () => {
-    const tool = vietQrTools.createLookupReceiverTool();
+    const tool = lookupReceiverTool.createLookupReceiverTool();
     const result = await tool.execute({ receiver_name: "Chị Dung" }, mockOptions) as any;
 
     assert.equal(result.found, true);
@@ -95,7 +97,7 @@ describe("vietqr-tools", () => {
   });
 
   it("lookup_payment_receiver báo chưa có khi tra người lạ", async () => {
-    const tool = vietQrTools.createLookupReceiverTool();
+    const tool = lookupReceiverTool.createLookupReceiverTool();
     const result = await tool.execute({ receiver_name: "Anh Tuấn Lạ Mặt" }, mockOptions) as any;
 
     assert.equal(result.found, false);

@@ -11,19 +11,36 @@ import type { ParsedMessage } from "./zalo-message-parser.js";
 const log = createLogger("kenh-ca-nhan");
 
 /**
- * Báo cho người nhắn biết bot đã nhận: thả reaction vào tin vừa gửi.
+ * Báo cho người nhắn biết bot đã nhận: thả reaction vào tin vừa gửi (hoặc cả batch tin).
  * Không await ở luồng chính và tự nuốt lỗi - reaction hỏng không được làm
  * chậm hay chết đường trả lời.
  */
-function tuThaCamXuc(config: AccountConfig, api: API, msg: ParsedMessage): void {
-  if (!config.autoReactEnabled || !msg.msgId) return;
-  void api
-    .addReaction(toZaloReaction(config.autoReactIcon), {
-      data: { msgId: msg.msgId, cliMsgId: msg.cliMsgId },
-      threadId: msg.threadId,
-      type: msg.threadType,
-    })
-    .catch((err) => log.debug({ err }, "Auto-react thất bại"));
+function tuThaCamXuc(
+  config: AccountConfig,
+  api: API,
+  target: ParsedMessage | ParsedMessage[],
+): void {
+  if (!config.autoReactEnabled) return;
+  const list = (Array.isArray(target) ? target : [target]).filter((m) => !!m.msgId);
+  if (list.length === 0) return;
+
+  void (async () => {
+    for (let i = 0; i < list.length; i++) {
+      const msg = list[i]!;
+      try {
+        await api.addReaction(toZaloReaction(config.autoReactIcon), {
+          data: { msgId: msg.msgId, cliMsgId: msg.cliMsgId },
+          threadId: msg.threadId,
+          type: msg.threadType,
+        });
+      } catch (err) {
+        log.debug({ err, msgId: msg.msgId }, "Auto-react thất bại");
+      }
+      if (i < list.length - 1) {
+        await new Promise((resolve) => setTimeout(resolve, 150));
+      }
+    }
+  })();
 }
 
 /**

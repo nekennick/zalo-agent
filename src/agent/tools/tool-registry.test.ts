@@ -12,7 +12,7 @@ let imageStore: typeof import("../../config/runtime-image-settings.js");
 let tuning: typeof import("../../config/runtime-tuning-settings.js");
 
 before(async () => {
-  dataDir = setupTestEnv();
+  dataDir = setupTestEnv({ NOTEBOOKLM_API_URL: "" });
   registry = await import("./tool-registry.js");
   visionStore = await import("../../config/runtime-vision-settings.js");
   imageStore = await import("../../config/runtime-image-settings.js");
@@ -218,6 +218,9 @@ describe("tool-registry", () => {
     "create_image",
     "tai_video",
     "tag_member",
+    "lookup_payment_receiver",
+    "send_payment_qr",
+    "record_inventory_import",
   ];
 
   it("isolated:true (lượt theo lịch) loại đủ 10 tool kể cả khi hạ tầng/cấu hình đã sẵn sàng", () => {

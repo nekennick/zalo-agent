@@ -41,6 +41,7 @@ export type ToolContext = {
    * ảnh của lượt hiện tại CHƯA vào DB khi tool chạy - đọc history là hụt.
    */
   batch: ParsedMessage[];
+  inventoryMessages?: () => readonly ParsedMessage[];
   /**
    * Lượt CHẠY THEO LỊCH (job scheduler agent-loop.ts truyền `isolated:true`
    * xuống đây) - lọc bớt tool theo `runsInScheduledTurn`. Mặc định false/undefined

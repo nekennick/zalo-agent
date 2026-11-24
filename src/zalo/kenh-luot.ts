@@ -30,8 +30,8 @@ export type KenhLuot = {
   duongGui: (threadId: string, threadType: ThreadType) => (doan: DoanCanGui) => Promise<unknown>;
   /** Báo "đã xem" cho cả batch. Thiếu = bỏ qua. */
   baoDaXem?: (batch: ParsedMessage[]) => void;
-  /** Thả cảm xúc vào tin vừa tới. Thiếu = bỏ qua. */
-  tuThaCamXuc?: (config: AccountConfig, msg: ParsedMessage) => void;
+  /** Thả cảm xúc vào tin vừa tới (hoặc cả batch tin). Thiếu = bỏ qua. */
+  tuThaCamXuc?: (config: AccountConfig, target: ParsedMessage | ParsedMessage[]) => void;
   /** Bật dấu "đang nhập", trả hàm TẮT. Thiếu = bỏ qua. */
   batDangNhap?: (threadId: string, threadType: ThreadType) => () => void;
   /**

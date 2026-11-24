@@ -207,6 +207,25 @@ export type VietQrAccountItem = {
   updatedAt: string;
 };
 
+// ===== Facebook SaaS Pages =====
+export type FacebookPageItem = {
+  pageId: string;
+  pageName: string;
+  maskedToken: string;
+  agentId: string;
+  status: "active" | "paused" | "expired";
+  planName: "basic" | "pro" | "unlimited";
+  messagesQuota: number;
+  messagesUsed: number;
+  cycleStartAt: string;
+  cycleEndAt: string;
+  createdAt: string;
+  updatedAt: string;
+  isExpired: boolean;
+  isQuotaExceeded: boolean;
+  daysRemaining: number;
+};
+
 // ===== API calls =====
 
 export const api = {
@@ -651,6 +670,49 @@ export const api = {
       }),
     deleteAccount: (id: string) =>
       request<{ ok: true }>(`/api/vietqr/accounts/${encodeURIComponent(id)}`, {
+        method: "DELETE",
+      }),
+  },
+
+  facebook: {
+    pages: () => request<{ ok: true; data: FacebookPageItem[] }>("/api/facebook/pages"),
+    createPage: (data: {
+      pageId: string;
+      pageName: string;
+      accessToken: string;
+      agentId: string;
+      planName?: "basic" | "pro" | "unlimited";
+      durationDays?: number;
+    }) =>
+      request<{ ok: true; data: FacebookPageItem }>("/api/facebook/pages", {
+        method: "POST",
+        body: JSON.stringify(data),
+      }),
+    updatePage: (
+      id: string,
+      patch: {
+        status?: "active" | "paused" | "expired";
+        agentId?: string;
+        planName?: "basic" | "pro" | "unlimited";
+      },
+    ) =>
+      request<{ ok: true; data: FacebookPageItem }>(`/api/facebook/pages/${encodeURIComponent(id)}`, {
+        method: "PATCH",
+        body: JSON.stringify(patch),
+      }),
+    extendSubscription: (
+      id: string,
+      data: { additionalDays: number; planName?: "basic" | "pro" | "unlimited" },
+    ) =>
+      request<{ ok: true; data: { success: boolean; newEndAt: string; planName: string } }>(
+        `/api/facebook/pages/${encodeURIComponent(id)}/extend`,
+        {
+          method: "POST",
+          body: JSON.stringify(data),
+        },
+      ),
+    removePage: (id: string) =>
+      request<{ ok: true; message: string }>(`/api/facebook/pages/${encodeURIComponent(id)}`, {
         method: "DELETE",
       }),
   },

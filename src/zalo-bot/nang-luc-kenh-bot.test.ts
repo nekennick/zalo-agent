@@ -55,12 +55,15 @@ describe("năng lực kênh bot", () => {
       // generate_slides) chạy được trên cả hai kênh; riêng action xuất file
       // media tự kiểm ctx.api và trả ketQuaLoi trên kênh bot.
       "notebooklm",
+      "lookup_payment_receiver",
+      "send_payment_qr",
+      "record_inventory_import",
     ]);
     const chuaXet = TOOL_KEYS.filter((k) => !daXet.has(k));
     assert.deepEqual(chuaXet, [], `tool chưa xét cho kênh bot: ${chuaXet.join(", ")}`);
   });
 
-  it("8 tool đụng năng lực Bot API KHÔNG CÓ thì bị chặn, tool thuần thì không", () => {
+  it("9 tool đụng năng lực Bot API KHÔNG CÓ thì bị chặn, tool thuần thì không", () => {
     assert.equal(toolChayDuocTrenBot("send_file"), false);
     assert.equal(toolChayDuocTrenBot("create_word_document"), false);
     assert.equal(toolChayDuocTrenBot("create_excel_file"), false);

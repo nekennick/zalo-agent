@@ -12,6 +12,7 @@ import { createLogger } from "./shared/logger.js";
 import { startTempFileCleanupSchedule } from "./shared/temp-file-store.js";
 import { startAllAccounts, stopAllAccounts } from "./zalo/account-manager.js";
 import { startFriendAutoAcceptSweep } from "./zalo/friend-auto-accept-sweep.js";
+import { startInventoryRecallWorker } from "./inventory/inventory-recall-handler.js";
 
 // Vòng đời tiến trình cũng cần scope: không có thì badge scope trên trang Logs
 // trống trơn và KHÔNG LỌC ĐƯỢC - đúng lúc cần nhất là khi có uncaughtException
@@ -44,6 +45,7 @@ let stopKbEmbeddingWorker: () => void = () => {};
 let stopFriendSweep: () => void = () => {};
 let stopMcpManager: () => void = () => {};
 let stopOutbox: () => void = () => {};
+let stopInventoryRecalls: () => void = () => {};
 function shutdown(signal: string): void {
   if (shuttingDown) return;
   shuttingDown = true;
@@ -54,6 +56,7 @@ function shutdown(signal: string): void {
   stopKbEmbeddingWorker();
   stopMcpManager();
   stopOutbox();
+  stopInventoryRecalls();
   stopDashboardServer();
   stopAllAccounts();
   closeHistoryStore();
@@ -91,6 +94,7 @@ startTempFileCleanupSchedule();
 // thì người vận hành vẫn phải vào được dashboard để xóa nó. Đảo lại thứ tự là
 // tự khoá đường chữa của chính mình.
 startDashboardServer();
+stopInventoryRecalls = startInventoryRecallWorker();
 
 // MCP manager cùng nhóm quản trị với dashboard (nối server ngoài do người vận
 // hành khai trên trang Cấu hình) - server MCP hỏng KHÔNG chặn boot vì

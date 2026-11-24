@@ -9,6 +9,8 @@ import { taoBangMcp } from "../mcp/mcp-schema.js";
 import { taoBangNotebookLm } from "../notebooklm/notebooklm-schema.js";
 import { taoBangFriendRequests } from "./friend-schema.js";
 import { taoBangVietQrBank } from "./vietqr-bank-schema.js";
+import { taoBangFacebookTenant } from "../facebook/facebook-tenant-schema.js";
+import { createInventoryMessageTable } from "../inventory/inventory-message-schema.js";
 
 export const db = new DatabaseSync(path.join(dataDir, "zalo-agent.db"));
 db.exec("PRAGMA journal_mode = WAL;");
@@ -262,6 +264,10 @@ function runMigrations(): void {
 
   // Tài khoản ngân hàng nhận thanh toán VietQR (ăn vặt, cơm trưa)
   taoBangVietQrBank(db);
+
+  // Multi-tenant SaaS cho các Facebook Fanpages
+  taoBangFacebookTenant(db);
+  createInventoryMessageTable(db);
 
   // Tool CHẠY LỖI: AI SDK để chúng ở content dạng tool-error, không vào
   // toolResults, nên trước cột này mọi lần tool hỏng đều mất tăm khỏi trace.

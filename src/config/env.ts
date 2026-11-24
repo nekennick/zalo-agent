@@ -481,6 +481,11 @@ const envSchema = z.object({
   // Cố ý KHÔNG đưa lên dashboard: đây là ranh giới bảo mật, không phải tham số vận hành.
   OUTBOX_ATTACH_ALLOWED_DIRS: z.string().default(""),
 
+  // ===== Kênh Facebook Page (Messenger) =====
+  FACEBOOK_PAGE_ID: z.string().optional(),
+  FACEBOOK_PAGE_ACCESS_TOKEN: z.string().optional(),
+  FACEBOOK_VERIFY_TOKEN: z.string().default("yagami_facebook_webhook_2026"),
+
   // Khóa AES-256 mã hóa cookie Zalo trên đĩa
   CREDENTIALS_ENCRYPTION_KEY: z
     .string()

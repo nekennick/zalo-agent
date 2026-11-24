@@ -11,7 +11,9 @@ import { createSaveMemoryTool } from "./save-memory-tool.js";
 import { createSendFileTool } from "./send-file-tool.js";
 import { createTagMemberTool } from "./tag-member-tool.js";
 import { createTaiVideoTool } from "./tai-video-tool.js";
-import { createLookupReceiverTool, createSendPaymentQrTool } from "./vietqr-tools.js";
+import { createLookupReceiverTool } from "./lookup-receiver-tool.js";
+import { createSendPaymentQrTool } from "./vietqr-tools.js";
+import { createRecordInventoryImportTool } from "./record-inventory-import-tool.js";
 import type { ToolDefinition } from "./tool-catalog-types.js";
 
 /**
@@ -169,5 +171,13 @@ export const ACTION_TOOL_DEFINITIONS: ToolDefinition[] = [
     group: "action",
     runsInScheduledTurn: false,
     build: (ctx) => createSendPaymentQrTool(ctx),
+  },
+  {
+    key: "record_inventory_import",
+    label: "Ghi nhận nhập hàng vào Google Sheet",
+    description: "Tự động trích xuất danh sách mặt hàng cần nhập (tên hàng, số lượng, ĐVT, nhân viên) và ghi vào Google Sheet quản lý kho Yagami",
+    group: "action",
+    runsInScheduledTurn: false,
+    build: (ctx) => createRecordInventoryImportTool(ctx),
   },
 ];

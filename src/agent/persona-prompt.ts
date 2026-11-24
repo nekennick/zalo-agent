@@ -9,6 +9,7 @@ import { khoiBoiCanhThread } from "./thread-summary-prompt-block.js";
 import type { ParsedMessage } from "../zalo/zalo-message-parser.js";
 import { listAvailableTools, type ToolDefinition } from "./tools/tool-registry.js";
 import { toolPersonaSections } from "./persona-tool-rules.js";
+import { isWarehouseThread } from "../middleware/allowlist-filter.js";
 import {
   THE_NOI_DUNG_NGOAI,
   TIEU_DE_KHA_NANG,
@@ -135,7 +136,9 @@ export function buildSystemPrompt(
     // `agent` truyền cả vào đây chứ không chỉ vào buildAgentTools: từ khi agent
     // có lớp tắt tool riêng, thiếu nó thì mục "Khả năng" kể luôn tool mà chính
     // agent này đã tắt - đúng lớp bug bất biến kia sinh ra để chặn.
-    const available = listAvailableTools({ agent, account }, { isolated });
+    const available = listAvailableTools({ agent, account }, { isolated }).filter(
+      (t) => t.key !== "record_inventory_import" || isWarehouseThread(msg?.threadId || ""),
+    );
     sections.push(toolCapabilitySection(available));
     sections.push(...toolPersonaSections(available.map((t) => t.key)));
 

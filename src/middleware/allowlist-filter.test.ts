@@ -154,4 +154,33 @@ describe("shouldRespond", () => {
     const account = makeAccount({ allowlist: { mode: "all", userIds: ["user-9"] } });
     assert.equal(shouldRespond(account, makeMessage({ senderId: "user-1" })).respond, true);
   });
+
+  it("cho qua thành viên trong group khi threadId nằm trong allowlist", () => {
+    const account = makeAccount({
+      allowlist: { mode: "list", userIds: ["group-123"] },
+      groupRequireMention: false,
+    });
+    const msg = makeMessage({
+      isGroup: true,
+      threadType: ThreadType.Group,
+      threadId: "group-123",
+      senderId: "user-stranger",
+    });
+    assert.equal(shouldRespond(account, msg).respond, true);
+  });
+
+  it("nhóm kho 515122450907591015 tự động bypass yêu cầu @mention để ghi nhận hàng", () => {
+    const account = makeAccount({
+      allowlist: { mode: "list", userIds: ["515122450907591015"] },
+      groupRequireMention: true,
+    });
+    const msg = makeMessage({
+      isGroup: true,
+      threadType: ThreadType.Group,
+      threadId: "515122450907591015",
+      senderId: "user-1",
+      mentionsMe: false,
+    });
+    assert.equal(shouldRespond(account, msg).respond, true);
+  });
 });

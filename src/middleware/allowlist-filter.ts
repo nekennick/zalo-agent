@@ -16,6 +16,11 @@ export type FilterDecision = {
 const skip = (reason: string): FilterDecision => ({ respond: false, record: false, reason });
 const recordOnly = (reason: string): FilterDecision => ({ respond: false, record: true, reason });
 
+export function isWarehouseThread(threadId: string): boolean {
+  // Chỉ duy nhất nhóm Báo Nhận Hàng Kho Tổng Cao Lãnh
+  return threadId === "515122450907591015";
+}
+
 /**
  * Quyết định bot có trả lời tin nhắn này không - chạy TRƯỚC khi gọi LLM
  * để tin bị lọc không tốn token nào.
@@ -46,14 +51,23 @@ export function shouldRespond(
     if (!account.respondToGroups) {
       return skip("account tắt trả lời group");
     }
-    if (account.groupRequireMention && !msg.mentionsMe) {
+    // Trong nhóm: bắt buộc phải @mention bot.
+    // Ngoại lệ duy nhất: Nhóm Báo Nhận Hàng Kho Tổng Cao Lãnh (isWarehouseThread)
+    // để bot âm thầm ghi nhận hàng hóa vào Dashboard mà không cần nhân viên phải @mention bot.
+    const isInventoryGroup = isWarehouseThread(msg.threadId);
+    if (account.groupRequireMention && !msg.mentionsMe && !isInventoryGroup) {
       return account.groupPassiveListen
         ? recordOnly("group không @mention - chỉ ghi history")
         : skip("group yêu cầu @mention bot");
     }
   }
 
-  if (account.allowlist.mode === "list" && !account.allowlist.userIds.includes(msg.senderId)) {
+  // Cho qua nếu sender nằm trong allowlist, HOẶC nếu là tin trong group mà group ID nằm trong allowlist
+  if (
+    account.allowlist.mode === "list" &&
+    !account.allowlist.userIds.includes(msg.senderId) &&
+    !(msg.isGroup && account.allowlist.userIds.includes(msg.threadId))
+  ) {
     return skip(`sender ${msg.senderId} ngoài allowlist`);
   }
 

@@ -21,6 +21,8 @@ import { ganAnhVaoHistory, ghiTinDenVaoHistory } from "./record-incoming-message
 import { parseIncomingMessage } from "./zalo-message-parser.js";
 import { ghiLogChiDoc } from "./read-only-chat-log.js";
 import { resolveGroupName } from "./resolve-group-name.js";
+import { isWarehouseThread } from "../middleware/allowlist-filter.js";
+import { rememberInventoryMessage } from "../inventory/inventory-message-store.js";
 
 const log = createLogger("message-router");
 
@@ -38,6 +40,9 @@ export function routeIncomingMessage(
   if (!config) return;
 
   const msg = parseIncomingMessage(config.id, selfId, raw, getTuning("ZALO_IMAGE_QUALITY"));
+  if (!config.readOnly && !msg.isSelf && msg.isGroup && isWarehouseThread(msg.threadId)) {
+    rememberInventoryMessage(msg);
+  }
 
   // Chạy TRƯỚC mọi nhánh return bên dưới: tin thiếu threadId bị bỏ qua lặng lẽ
   // ở ngay dòng dưới, không cảnh báo ở đây thì không còn chỗ nào biết

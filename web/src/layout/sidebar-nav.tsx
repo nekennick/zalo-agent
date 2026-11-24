@@ -50,6 +50,7 @@ const SECTIONS: { title: string; items: { to: string; label: string; icon: IconF
     title: "Hội thoại",
     items: [
       { to: "/sessions", label: "Sessions", icon: IconChat },
+      { to: "/facebook", label: "Fanpages (SaaS)", icon: IconGlobe },
       { to: "/contacts", label: "Contacts", icon: IconUsers },
       { to: "/friends", label: "Bạn bè", icon: IconHeart },
       { to: "/schedule", label: "Lịch hẹn", icon: IconClock },

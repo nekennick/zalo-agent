@@ -15,6 +15,7 @@ import { buildTurnMessages, type ImageContextMode } from "./agent-turn-content.j
 import { resolveLanguageModel, resolveReasoningEffort, resolveReasoningOptions } from "./llm-provider.js";
 import { markModelNoVision } from "./model-vision-detection.js";
 import { buildSystemPrompt } from "./persona-prompt.js";
+import { isWarehouseThread } from "../middleware/allowlist-filter.js";
 import { buildAgentTools, TOOL_DEFINITIONS } from "./tools/index.js";
 import { forLog, taoQuanSatStep } from "./agent-step-observer.js";
 import { nguongTheoTranStep, ToolLoopGuard } from "./tool-loop-guard.js";
@@ -378,7 +379,13 @@ export async function runAgentTurn({
     // Thêm `isolated` lọc bớt tool không hợp với lượt theo lịch (add_reaction
     // không có msgId thật, read_image không có ảnh, save_memory chặn injection
     // từ job) - xem runsInScheduledTurn ở tool-registry.ts
-    const toolSet = buildAgentTools({ api, account, agent, message: latest, batch, isolated, ghiNhanDaGui });
+    const toolSet = buildAgentTools({
+      api, account, agent, message: latest, batch, isolated, ghiNhanDaGui,
+      inventoryMessages: () => [...batch, ...tinChenDaKeo],
+    });
+    if (!isWarehouseThread(latest.threadId)) {
+      delete toolSet.record_inventory_import;
+    }
     heThongDaGui = heThong;
     toolSetDaGui = toolSet;
     return chayStream(

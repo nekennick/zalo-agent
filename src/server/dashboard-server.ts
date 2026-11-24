@@ -39,6 +39,8 @@ import { traceRoutes } from "./routes/trace-routes.js";
 import { tuningRoutes } from "./routes/tuning-routes.js";
 import { versionRoutes } from "./routes/version-routes.js";
 import { visionRoutes } from "./routes/vision-routes.js";
+import { facebookWebhookRoutes } from "../facebook/facebook-webhook-routes.js";
+import { facebookPageRoutes } from "../facebook/facebook-page-routes.js";
 
 const log = createLogger("dashboard-server");
 const SESSION_COOKIE = "dashboard_session";
@@ -82,6 +84,9 @@ export function buildDashboardApp(): Hono {
     c.header("Cache-Control", "no-store");
     return c.json({ ok: true });
   });
+
+  // Webhook công khai dành cho Meta Messenger (xác thực token qua GET, nhận tin qua POST)
+  app.route("/webhook/facebook", facebookWebhookRoutes);
 
   // Chống CSRF cho mọi request GHI dưới /api/* (kể cả login/logout), xem csrf-guard.ts
   app.use("/api/*", csrfGuard);
@@ -186,6 +191,7 @@ export function buildDashboardApp(): Hono {
   app.route("/api/kb-embedding", kbEmbeddingRoutes);
   app.route("/api/mcp", mcpRoutes);
   app.route("/api/vietqr", vietQrRoutes);
+  app.route("/api/facebook", facebookPageRoutes);
 
   // API không khớp route nào phải trả JSON 404, không được rơi xuống SPA
   // fallback bên dưới (client fetch JSON mà nhận HTML thì lỗi rất khó đọc)

@@ -21,8 +21,28 @@ import { trichNguoiNhanMention } from "./reply-mention.js";
 import { deliverChatReply } from "./deliver-chat-reply.js";
 import { notifyTechnicalError, type ReplyTarget } from "./send-reply-in-parts.js";
 import type { ParsedMessage } from "./zalo-message-parser.js";
+import { isWarehouseThread } from "../middleware/allowlist-filter.js";
+import { runWarehouseSafetyNet } from "../inventory/warehouse-safety-net.js";
 
 const log = createLogger("message-turn");
+
+function completeInventorySources(trace: StepTrace[]): Set<string> {
+  const ids = new Set<string>();
+  for (const step of trace) {
+    for (const result of step.toolResults ?? []) {
+      if (result.name !== "record_inventory_import" || result.hong) continue;
+      try {
+        const receipt = JSON.parse(result.output) as { success?: boolean; completeSourceMessageIds?: unknown };
+        if (receipt.success === true && Array.isArray(receipt.completeSourceMessageIds)) {
+          for (const id of receipt.completeSourceMessageIds) if (typeof id === "string") ids.add(id);
+        }
+      } catch {
+        // Kết quả chưa xác nhận để bộ dự phòng đối soát lại.
+      }
+    }
+  }
+  return ids;
+}
 
 /**
  * Các điểm tiêm CHỈ dùng cho test - chạy thật thì bỏ trống hết và mỗi thứ tự
@@ -113,7 +133,11 @@ async function xuLyLuot(
   // Hai việc PHỤ: kênh nào không có thì bỏ qua, không dựng stub ném lỗi. Kênh
   // bot không có method nào tương đương (đo: `setMessageReaction` trả 404).
   kenh.baoDaXem?.(batch);
-  kenh.tuThaCamXuc?.(config, latest);
+  // Cơ chế Giao dịch Thả tim: Nhóm kho chỉ thả tim sau khi đã ghi nhận thành công vào Dashboard.
+  // Các nhóm khác / chat riêng: giữ nguyên cơ chế cũ 100% (tự động thả tim ngay ở đầu lượt).
+  if (!isWarehouseThread(latest.threadId)) {
+    kenh.tuThaCamXuc?.(config, batch);
+  }
 
   // Giữ "đang nhập" xuyên suốt: qua cả lượt LLM lẫn delay của rate-limiter,
   // dừng trong finally kể cả khi agent ném lỗi
@@ -137,6 +161,12 @@ async function xuLyLuot(
    * khỏi history y như ca tin bị bỏ ở trần hàng chờ.
    */
   const tinChen: ParsedMessage[] = [];
+  let inventoryReconciled = false;
+  const reconcileInventory = async () => {
+    if (inventoryReconciled) return;
+    await runWarehouseSafetyNet(config, kenh, [...batch, ...tinChen], completeInventorySources(trace));
+    inventoryReconciled = true;
+  };
   const layTinChen = async (): Promise<ParsedMessage[]> => {
     // Theo NGƯỜI GỬI: batch nay là của đúng một người (`message-batcher.ts`
     // khóa hàng chờ theo `(thread, người gửi)`), và tin của người khác trong
@@ -147,7 +177,9 @@ async function xuLyLuot(
     // Đối xử y hệt tin mở đầu lượt: người gửi phải thấy bot đã nhận, không thì
     // họ tưởng tin rơi vào khoảng không và gửi lại.
     kenh.baoDaXem?.(moi);
-    kenh.tuThaCamXuc?.(config, moi[moi.length - 1]!);
+    if (!isWarehouseThread(latest.threadId)) {
+      kenh.tuThaCamXuc?.(config, moi);
+    }
     // AWAIT chứ không fire-and-forget: `localPath` phải có TRƯỚC khi dựng nội
     // dung cho model, và trước khi ghi history. Thiếu nó thì history chỉ còn
     // dòng chữ "[gửi kèm N ảnh]" mà không đường dẫn nào - lượt sau bot không
@@ -206,6 +238,18 @@ async function xuLyLuot(
     // usage của lượt, gom một mối cho dễ tìm.
     if (trace.length > 0) saveTurnTrace(turnId, trace);
 
+    // Riêng nhóm báo nhận hàng: kiểm tra xem lượt này đã ghi nhận thành công vào Dashboard chưa
+    if (isWarehouseThread(latest.threadId)) {
+      await reconcileInventory();
+
+      // QUY TẮC CỐT LÕI (MANDATORY): Trong nhóm báo nhận hàng, bot hoàn toàn im lặng,
+      // tuyệt đối không gửi bất kỳ tin nhắn text nào vào nhóm trừ khi được @mention đích danh
+      if (!latest.mentionsMe) {
+        log.info({ threadId: latest.threadId }, "Nhóm kho không @mention: Bot chỉ ghi nhận hàng/thả tim, tuyệt đối không gửi text trả lời");
+        return;
+      }
+    }
+
     if (!result.text) {
       log.debug("Agent không trả text (có thể chỉ thả reaction)");
       return;
@@ -222,6 +266,18 @@ async function xuLyLuot(
     // maybeSummarizeThread tự nuốt lỗi nên không cần catch thêm
     void maybeSummarizeThread(config.id, latest.threadId);
   } catch (err) {
+    // Riêng nhóm báo nhận hàng: Nếu lượt bị lỗi, kích hoạt ngay Safety Net để đưa tin nhắn lên Dashboard
+    if (isWarehouseThread(latest.threadId)) {
+      try {
+        await reconcileInventory();
+      } catch (safetyErr) {
+        log.error({ safetyErr }, "Safety Net trong nhánh catch thất bại");
+      }
+      if (!latest.mentionsMe) {
+        return;
+      }
+    }
+
     // Tin của người dùng KHÔNG cần cứu ở đây nữa: đã vào lịch sử từ lúc nhận
     // (`record-incoming-message.ts`), nên lượt chết cách nào cũng không đánh
     // rơi. Trước đây nhánh này phải tự gọi `writeBatchToHistory`.

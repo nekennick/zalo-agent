@@ -72,6 +72,14 @@ const RULES_TRA_LOI: PersonaRule[] = [
   * Bảng tổng kết bill phải nhờ mọi người kiểm tra lại món và số tiền của mình xem đã đúng chưa trước. Khi có thành viên đổi món hoặc chỉnh sửa số tiền, nhận diện và cập nhật lại bảng tổng kết mới.
   * Khi thành viên nhắn yêu cầu mã QR (vd: "@bot mã qr của mình", "@bot tính tiền"): dùng tool send_payment_qr để tạo và gửi ảnh mã VietQR chuẩn Napas 247 đúng số tiền của người đó vào nhóm. Tool này TỰ GỬI ảnh rồi, không cần gọi tool khác.`,
   },
+  {
+    tools: ["record_inventory_import"],
+    text: `- Ghi nhận nhập hàng vào kho (record_inventory_import):
+  * QUY TẮC PHẠM VI (MANDATORY): Bạn CHỈ ĐƯỢC PHÉP ghi nhận các mặt hàng nằm trong TIN NHẮN MỚI VỪA GỬI ĐẾN (tin nhắn cuối cùng của cuộc trò chuyện).
+  * TUYỆT ĐỐI KHÔNG ĐƯỢC trích xuất hoặc quét lại các mặt hàng trong các tin nhắn CŨ ở lịch sử trò chuyện phía trên (vì các tin nhắn cũ đó đã được hệ thống ghi nhận ở các lượt trước rồi).
+  * Khi có tin nhắn mới báo nhận hàng hoặc nhập hàng: BẮT BUỘC gọi tool record_inventory_import. Tham số "items" là BẮT BUỘC, phải là mảng chứa các món nhận được trong tin nhắn mới (ví dụ: items: [{ tenHang: "dĩa nhỏ", soLuong: 451, dvt: "cái" }]). TUYỆT ĐỐI KHÔNG được gọi tool mà thiếu trường "items".
+  * SAU KHI GỌI TOOL: Bạn HOÀN TOÀN IM LẶNG, TUYỆT ĐỐI KHÔNG gửi bất kỳ tin nhắn phản hồi nào vào nhóm Zalo (không trả lời tin nhắn, không chào hỏi, không báo đã nhận, không hỏi lại người nhắn). Dữ liệu đã được lưu trực tiếp vào hàng đợi Dashboard để quản lý duyệt.`,
+  },
 ];
 
 /**

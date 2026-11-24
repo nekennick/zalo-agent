@@ -10,54 +10,15 @@ import { withNamedTempFile } from "../../shared/temp-file-store.js";
 import type { ToolContext } from "./index.js";
 import { guiFileKemCaption } from "./send-attachment-with-caption.js";
 import { ghiChuDaGuiAnh } from "./sent-by-tool-note.js";
-import { apiCaNhan } from "./tool-catalog-types.js";
 import { ketQuaLoi } from "./tool-failure-result.js";
 
 const log = createLogger("vietqr-tools");
 
 /**
- * Tool tra cứu thông tin tài khoản ngân hàng của người thanh toán đơn (ví dụ chị Dung, anh Khoa).
- */
-export function createLookupReceiverTool() {
-  return tool({
-    description:
-      "Tra cứu xem người thanh toán đơn (ví dụ: 'chị Dung', 'anh Khoa') đã có thông tin tài khoản ngân hàng trong hệ thống chưa trước khi chốt bill.",
-    inputSchema: z.object({
-      receiver_name: z
-        .string()
-        .min(1)
-        .describe("Tên hoặc biệt danh của người nhận chuyển khoản thanh toán (ví dụ: 'chị Dung', 'Khoa', 'Phan Thanh Dung')"),
-    }),
-    execute: async ({ receiver_name }) => {
-      const acc = findVietQrAccountByKeyword(receiver_name);
-      if (acc) {
-        return {
-          found: true,
-          account: {
-            bankName: acc.bankName,
-            bankCode: acc.bankCode,
-            accountNumber: acc.accountNumber,
-            accountHolder: acc.accountHolder,
-            nickname: acc.nickname,
-          },
-          instruction: `Đã có tài khoản của ${acc.accountHolder} (${acc.bankName} - ${acc.accountNumber}). Bạn hãy dùng thông tin này để tổng kết bill và thông báo cho cả nhóm.`,
-        };
-      }
-
-      return {
-        found: false,
-        receiverName: receiver_name,
-        message: `Chưa có thông tin số tài khoản của "${receiver_name}" trong hệ thống. Nhờ anh Khoa vào Dashboard Web (mục Tài khoản VietQR) để thêm STK trước.`,
-      };
-    },
-  });
-}
-
-/**
  * Tool tạo và gửi ảnh mã VietQR (chuẩn Napas 247) trực tiếp vào nhóm chat Zalo.
  */
 export function createSendPaymentQrTool(ctx: ToolContext) {
-  const api = apiCaNhan(ctx);
+  const api = ctx.api;
   return tool({
     description:
       "Tạo và gửi mã QR VietQR (chuẩn Napas 247) trực tiếp vào cuộc trò chuyện Zalo để thành viên quét chuyển khoản đúng số tiền món ăn/đồ uống.",

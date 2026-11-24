@@ -16,6 +16,7 @@ import { kenhCaNhan } from "./kenh-ca-nhan.js";
 import type { KenhLuot } from "./kenh-luot.js";
 import { loginWithStoredCredentials } from "./zalo-client.js";
 import { startListener } from "./zalo-listener.js";
+import { handleInventoryUndo } from "../inventory/inventory-recall-handler.js";
 import { handleFriendEvent } from "./friend-event-handler.js";
 
 /**
@@ -101,12 +102,19 @@ export function attachAccount(config: AccountConfig, api: API): void {
   }
   stopAccount(config.id);
   const selfId = String(api.getOwnId());
+  const hooks = mocChiDoc(config.id, api, selfId);
   const stopListener = startListener(
     config.id,
     api,
     (raw) => routeIncomingMessage(config.id, api, selfId, raw),
     (event) => handleFriendEvent(config.id, api, event),
-    mocChiDoc(config.id, api, selfId),
+    {
+      ...hooks,
+      onUndo: (event) => {
+        hooks.onUndo?.(event);
+        return handleInventoryUndo(config.id, event);
+      },
+    },
   );
   running.set(config.id, { config, kenh: kenhCaNhan(api), selfId, stopListener });
   log.info({ accountId: config.id, label: config.label }, "Account sẵn sàng");
