@@ -1,7 +1,7 @@
 import { createLogger } from "./logger.js";
 import { downloadFromPublicUrl } from "./safe-remote-download.js";
 
-const MAX_IMAGE_BYTES = 8 * 1024 * 1024;
+const MAX_IMAGE_BYTES = 30 * 1024 * 1024; // 30MB (cho phép ảnh camera điện thoại độ phân giải cao)
 
 const log = createLogger("download-image");
 

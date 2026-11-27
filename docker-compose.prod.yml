@@ -34,6 +34,7 @@ services:
     volumes:
       - "${ZALO_AGENT_DATA_DIR:-zalo-agent-data}:/data"
       - "notebooklm-mcp-data:/data/notebooklm"
+      - "goclaw_goclaw-workspace:/app/workspace:ro"
 
     security_opt:
       - no-new-privileges:true
@@ -207,3 +208,5 @@ volumes:
     external: true
   notebooklm-mcp-data:
   9router-data:
+  goclaw_goclaw-workspace:
+    external: true

@@ -9,6 +9,7 @@
  */
 
 import { runAgentTurn } from "../agent/agent-loop.js";
+import type { ScheduledAttachment } from "../agent/tools/tool-catalog-types.js";
 import type { StepTrace } from "../agent/agent-step-trace.js";
 import { saveTurnTrace } from "../agent/agent-trace-store.js";
 import type { resolveLanguageModel } from "../agent/llm-provider.js";
@@ -197,22 +198,11 @@ async function runAgentJob(
   // {0,0,0} giả, ĐÈ MẤT số token thật vừa ghi đúng, và saveTurnTrace lần 2
   // chèn TRÙNG y hệt các dòng agent_steps đã lưu ở lần đầu (Mục 4, vòng 3).
   let turnFinished = false;
+  let pendingAttachments: ScheduledAttachment[] = [];
 
   await runInTurnLogContext({ accountId: job.accountId, threadId: job.threadId, turnId }, async () => {
     try {
       const result = await runAgentTurn({
-        // `null` trên kênh bot. AN TOÀN, nhưng KHÔNG phải vì "hai lớp lọc
-        // chồng nhau" như bản chú thích đầu ghi - đếm lại bằng mã nguồn thì
-        // câu đó SAI: trong 8 tool gọi `apiCaNhan(ctx)`, bảy cái có
-        // `runsInScheduledTurn: false`, riêng `get_group_info` KHÔNG khai gì
-        // cả nên lớp duy nhất giữ nó khỏi lượt này là bảng chặn kênh bot.
-        //
-        // Chỗ canh THẬT của bất biến là `api-ca-nhan-guard.test.ts` ("MỌI tool
-        // gọi `apiCaNhan` đều nằm trong bảng chặn" - đo theo NGUỒN, nên tool
-        // mới cũng bị soi), cộng ca "còn ĐÚNG 4 tool tra cứu" ở
-        // `lich-hen-kenh-bot.test.ts`. Đừng dựa vào phép cộng hai lớp: gỡ
-        // `get_group_info` khỏi bảng chặn là `api: null` hết an toàn ngay, dù
-        // "lớp thứ hai" vẫn còn nguyên trên giấy.
         api: dich.kenh.api,
         account,
         batch: [message],
@@ -220,12 +210,14 @@ async function runAgentJob(
         isolated: true,
         resolveModel: options.resolveModel,
       });
+      pendingAttachments = result.attachments ?? [];
       finishAgentTurn(turnId, result.usage);
       if (trace.length > 0) saveTurnTrace(turnId, trace);
       turnFinished = true;
 
+      const hasAttachments = pendingAttachments.length > 0;
       const text = result.text.trim();
-      if (!text || isSilentResponse(text)) {
+      if (isSilentResponse(text) || (!text && !hasAttachments)) {
         conclude(job, runId, {
           status: "silent",
           turnId,
@@ -234,58 +226,57 @@ async function runAgentJob(
         return;
       }
 
-      // Làm sạch SAU nhánh [SILENT] ở trên: chạy trước thì bộ lọc bỏ mất chính
-      // cái nhãn mà nhánh đó dựa vào để quyết im lặng, và job "không có gì mới"
-      // sẽ nhắn mỗi sáng đúng thứ nó sinh ra để tránh.
-      const sach = lamSachTheoCauHinh(text);
-      if (sach.chan) {
-        // Lượt theo lịch KHÔNG nhắn câu lỗi (job hỏng thì im - đúng nếp nhánh
-        // catch bên dưới), nhưng phải chốt run 'error' để dashboard thấy.
-        //
-        // CỐ Ý dùng `conclude` (có `markRun`) chứ không `concludeBlockedNotRun`,
-        // dù việc này tiêu suất chạy của job `once`. Lý do: rò prompt KHÔNG phải
-        // sự cố thoáng qua như account rớt phiên - nó do chính payload của job
-        // dẫn model tới đó, nên lượt sau gần như chắc chắn rò lại.
-        // `concludeBlockedNotRun` phục hồi `next_run_at` về đúng mốc cũ, mà mốc
-        // cũ thì đã quá hạn - job `once` sẽ due lại ngay tick sau và quay vòng
-        // vô tận. Thà chốt lỗi một lần rồi để người dùng nhìn thấy trên dashboard
-        // mà sửa payload.
-        log.error({ jobId: job.id, dauText: text.slice(0, 200) }, "Chặn câu trả lời rò system prompt");
-        conclude(job, runId, { status: "error", turnId, detail: "Câu trả lời rò system prompt - đã chặn." });
-        return;
-      }
-      if (sach.daSua.length > 0) {
-        log.warn({ jobId: job.id, daSua: sach.daSua }, "Đã làm sạch câu trả lời của job trước khi gửi");
-      }
-      if (!sach.text.trim()) {
-        conclude(job, runId, { status: "silent", turnId, detail: "Không còn nội dung sau khi làm sạch." });
-        return;
+      let finalText = "";
+      if (text) {
+        // Làm sạch SAU nhánh [SILENT] ở trên: chạy trước thì bộ lọc bỏ mất chính
+        // cái nhãn mà nhánh đó dựa vào để quyết im lặng, và job "không có gì mới"
+        // sẽ nhắn mỗi sáng đúng thứ nó sinh ra để tránh.
+        const sach = lamSachTheoCauHinh(text);
+        if (sach.chan) {
+          log.error({ jobId: job.id, dauText: text.slice(0, 200) }, "Chặn câu trả lời rò system prompt");
+          conclude(job, runId, { status: "error", turnId, detail: "Câu trả lời rò system prompt - đã chặn." });
+          return;
+        }
+        if (sach.daSua.length > 0) {
+          log.warn({ jobId: job.id, daSua: sach.daSua }, "Đã làm sạch câu trả lời của job trước khi gửi");
+        }
+        if (!sach.text.trim() && !hasAttachments) {
+          conclude(job, runId, { status: "silent", turnId, detail: "Không còn nội dung sau khi làm sạch." });
+          return;
+        }
+        finalText = sach.text.trim()
+          ? (options.late ? withLateLabel(sach.text, options.scheduledFor, timeZone) : sach.text)
+          : "";
       }
 
       if (await blockedByGuard(job, target, runId, timeZone, options.scheduledFor, options.now, turnId)) return;
 
-      // Nhãn "nhắc trễ" ghép SAU khi làm sạch: nó là chữ của mình, không phải
-      // của model, nên không có gì để lọc và cũng không được để lọt qua bộ lọc
-      const finalText = options.late
-        ? withLateLabel(sach.text, options.scheduledFor, timeZone)
-        : sach.text;
-      await sendAndConclude(job, target, runId, timeZone, finalText, options.scheduledFor, options.now, turnId);
+      await sendAndConclude(
+        job,
+        target,
+        runId,
+        timeZone,
+        finalText,
+        options.scheduledFor,
+        options.now,
+        turnId,
+        pendingAttachments,
+      );
     } catch (err) {
-      // Lượt ném lỗi (provider chết, timeout...) vẫn phải chốt token đã tốn +
-      // lưu trace các step ĐÃ chạy được - đúng nếp message-turn-processor.ts.
-      // Khác duy nhất: KHÔNG nhắn "trục trặc kỹ thuật" - job lỗi thì im.
-      // CHỈ chốt bằng usage {0,0,0} khi CHƯA từng chốt thật (turnFinished
-      // false) - agent-loop ném lỗi TRƯỚC khi kịp trả về result là ca DUY
-      // NHẤT còn lại sau khi sendAndConclude tự lo hết bookkeeping của nó
-      // (Mục 2, vòng 3: sendAndConclude không còn ném lỗi sau khi đã gửi).
       if (!turnFinished) {
         finishAgentTurn(turnId, { inputTokens: 0, outputTokens: 0, totalTokens: 0, steps: trace.length });
         if (trace.length > 0) saveTurnTrace(turnId, trace);
       }
-      // Chắc chắn "chưa gửi được" gì - đếm vào delivery_attempts (Finding 1)
-      // thay vì markRun ngay.
       const message = err instanceof Error ? err.message : String(err);
       concludeDeliveryFailed(job, runId, options.scheduledFor, message, turnId);
+    } finally {
+      for (const att of pendingAttachments) {
+        try {
+          await att.cleanup?.();
+        } catch {
+          /* sweep định kỳ sẽ dọn */
+        }
+      }
     }
   });
 }

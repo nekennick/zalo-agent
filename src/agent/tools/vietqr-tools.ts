@@ -35,16 +35,31 @@ export function createSendPaymentQrTool(ctx: ToolContext) {
       caption: z
         .string()
         .optional()
-        .describe("Lời nhắn kèm ảnh QR cực kỳ ngắn gọn, súc tích (ví dụ: 'Mã QR phần anh Kiệt ạ')"),
+        .describe(
+          "Ghi chú ngắn gọn kèm ảnh QR đúng mẫu: 'Dạ em gửi mã QR [tên món] của [xưng hô + tên khách].' " +
+          "(ví dụ: 'Dạ em gửi mã QR ly Trà Olong nho mẫu đơn của anh Khoa.' hoặc 'Dạ em gửi mã QR đơn món của anh Khoa.'). " +
+          "KHÔNG ghi thêm người nhận hay ngân hàng.",
+        ),
     }),
     execute: async ({ receiver_name, amount, memo, caption }) => {
       if (!api) {
         return ketQuaLoi("Không có quyền gửi ảnh trong kênh bot này.");
       }
 
-      const acc =
-        (receiver_name ? findVietQrAccountByKeyword(receiver_name) : null) ??
-        getDefaultVietQrAccount();
+      const trimmedReceiver = receiver_name?.trim();
+      let acc: ReturnType<typeof getDefaultVietQrAccount> = null;
+
+      if (trimmedReceiver) {
+        acc = findVietQrAccountByKeyword(trimmedReceiver);
+        if (!acc) {
+          log.warn({ receiver_name: trimmedReceiver }, "Không tìm thấy tài khoản ngân hàng của người nhận được yêu cầu");
+          return ketQuaLoi(
+            `Không tìm thấy tài khoản ngân hàng của người nhận "${trimmedReceiver}". Tuyệt đối KHÔNG tự ý lấy tài khoản người khác để gửi thay thế. Vui lòng kiểm tra lại tên người nhận hoặc nhờ người nhận cung cấp STK.`,
+          );
+        }
+      } else {
+        acc = getDefaultVietQrAccount();
+      }
 
       if (!acc) {
         return ketQuaLoi(
@@ -65,7 +80,7 @@ export function createSendPaymentQrTool(ctx: ToolContext) {
       }
 
       const threadKey = `${ctx.account.id}:${ctx.message.threadId}`;
-      const defaultCaption = caption || `@${ctx.message.senderName} Mã QR chuyển tiền ${amount.toLocaleString("vi-VN")}đ cho ${acc.accountHolder} (${acc.bankName}) ạ.`;
+      const defaultCaption = caption || `Dạ em gửi mã QR đơn món của ${ctx.message.senderName}.`;
       const fileName = `vietqr-${Date.now()}.png`;
 
       try {
@@ -81,7 +96,15 @@ export function createSendPaymentQrTool(ctx: ToolContext) {
         });
 
         ctx.ghiNhanDaGui?.(ghiChuDaGuiAnh(1, defaultCaption));
-        return "Đã tạo và GỬI mã QR thanh toán thành công cho người dùng vào nhóm.";
+        return (
+          "Đã tạo và gửi ảnh mã QR kèm ghi chú vào nhóm thành công rồi. " +
+          "Tin nhắn trả lời bên dưới CHỈ báo thông tin món theo đúng mẫu ngắn gọn sau, " +
+          "KHÔNG tự thuật bước làm (như 'Đã gửi xong mã QR...'), KHÔNG nhắc lại người nhận/ngân hàng hay thêm câu chào dài dòng:\n" +
+          "Dạ món của anh/chị là:\n" +
+          "- Món: [số lượng + tên món]\n" +
+          "- Số tiền: [số tiền]đ\n" +
+          "(Nếu nhiều món thì liệt kê mỗi món 1 dòng '- [số lượng] [tên món]: [tiền]đ' rồi chốt '- Tổng cộng: [tổng]đ')"
+        );
       } catch (err) {
         log.error({ err, threadKey }, "Lỗi khi gửi ảnh VietQR vào Zalo");
         return ketQuaLoi("Gửi ảnh mã QR vào nhóm thất bại do lỗi đường truyền Zalo.");

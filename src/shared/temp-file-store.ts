@@ -68,6 +68,31 @@ export async function withNamedTempFile<T>(
   }
 }
 
+/**
+ * Tạo file tạm và trả về hàm `cleanup` để caller tự dọn khi vòng đời kéo dài
+ * qua nhiều bước (ví dụ tool sinh ảnh trong lượt Lịch hẹn, rồi scheduler gửi xong mới xóa).
+ */
+export function createTempFile(
+  fileName: string,
+  data: Buffer,
+): { filePath: string; cleanup: () => void } {
+  const dir = path.join(tempDir, crypto.randomBytes(6).toString("hex"));
+  fs.mkdirSync(dir, { recursive: true });
+  const filePath = path.join(dir, path.basename(fileName));
+  fs.writeFileSync(filePath, data, { mode: 0o600 });
+
+  return {
+    filePath,
+    cleanup: () => {
+      try {
+        fs.rmSync(dir, { recursive: true, force: true });
+      } catch (err) {
+        log.debug({ dir, err }, "Không xóa được thư mục tạm - sweep định kỳ sẽ dọn");
+      }
+    },
+  };
+}
+
 /** Dọn ngay lúc gọi + lặp lại mỗi 24h - bắt file mồ côi sau khi process bị kill */
 export function startTempFileCleanupSchedule(): void {
   startDailyTask("temp-file-cleanup", () => {

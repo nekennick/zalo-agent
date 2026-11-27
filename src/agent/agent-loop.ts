@@ -17,6 +17,7 @@ import { markModelNoVision } from "./model-vision-detection.js";
 import { buildSystemPrompt } from "./persona-prompt.js";
 import { isWarehouseThread } from "../middleware/allowlist-filter.js";
 import { buildAgentTools, TOOL_DEFINITIONS } from "./tools/index.js";
+import type { ScheduledAttachment } from "./tools/tool-catalog-types.js";
 import { forLog, taoQuanSatStep } from "./agent-step-observer.js";
 import { nguongTheoTranStep, ToolLoopGuard } from "./tool-loop-guard.js";
 import { hasImageParts, isImageRejectionError } from "./vision-rejection-fallback.js";
@@ -159,6 +160,7 @@ export type AgentTurnParams = {
 export type AgentTurnResult = {
   text: string;
   usage: { inputTokens: number; outputTokens: number; totalTokens: number; steps: number };
+  attachments?: ScheduledAttachment[];
 };
 
 /**
@@ -360,6 +362,7 @@ export async function runAgentTurn({
   // lượt (đường hiệu chỉnh `KY_TU_MOI_TOKEN` - xem `token-estimate.ts`).
   let heThongDaGui = "";
   let toolSetDaGui: ReturnType<typeof buildAgentTools> | null = null;
+  const scheduledAttachments: ScheduledAttachment[] = [];
 
   // `streamText` chứ không phải `generateText`: request non-stream buộc router
   // gom trọn câu trả lời rồi mới gửi byte đầu, mà Cloudflare trước 9Router cắt
@@ -382,6 +385,7 @@ export async function runAgentTurn({
     const toolSet = buildAgentTools({
       api, account, agent, message: latest, batch, isolated, ghiNhanDaGui,
       inventoryMessages: () => [...batch, ...tinChenDaKeo],
+      queueScheduledAttachment: isolated ? (item) => scheduledAttachments.push(item) : undefined,
     });
     if (!isWarehouseThread(latest.threadId)) {
       delete toolSet.record_inventory_import;
@@ -769,6 +773,7 @@ export async function runAgentTurn({
         totalTokens: result.totalUsage.totalTokens ?? 0,
         steps: result.steps.length,
       },
+      ...(scheduledAttachments.length > 0 ? { attachments: scheduledAttachments } : {}),
     };
   }
 
@@ -780,5 +785,6 @@ export async function runAgentTurn({
       totalTokens: result.totalUsage.totalTokens ?? 0,
       steps: result.steps.length,
     },
+    ...(scheduledAttachments.length > 0 ? { attachments: scheduledAttachments } : {}),
   };
 }

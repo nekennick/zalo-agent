@@ -5,6 +5,7 @@ import { createGetDatetimeTool } from "./get-datetime-tool.js";
 import { createGetGroupInfoTool } from "./get-group-info-tool.js";
 import { createKbSearchTool } from "./kb-search-tool.js";
 import { createReadImageTool } from "./read-image-tool.js";
+import { createReadMorningReportTool } from "./read-morning-report-tool.js";
 import type { ToolDefinition } from "./tool-catalog-types.js";
 import { createWebFetchTool } from "./web-fetch-tool.js";
 import { createWebSearchTool } from "./web-search-tool.js";
@@ -90,5 +91,13 @@ export const READ_TOOL_DEFINITIONS: ToolDefinition[] = [
       "Kho tri thức chưa có nguồn nào (nạp ở trang Kho tri thức), hoặc agent này chưa được gán nguồn - " +
       "tick nguồn ở khối Kho tri thức ngay bên dưới, trên trang Agents",
     build: (ctx) => createKbSearchTool(ctx),
+  },
+  {
+    key: "read_morning_report",
+    label: "Đọc báo cáo đóng hàng sáng",
+    description:
+      "Đọc báo cáo đóng hàng sáng do Quản lý Kim tổng hợp mỗi 07:00 sáng từ KiotViet (lịch chi nhánh, đã đặt, chưa đặt, xe ngoài, 4 mã siết tồn SML, SMN, SLTL, MYG)",
+    group: "read",
+    build: () => createReadMorningReportTool(),
   },
 ];

@@ -6,7 +6,8 @@ import type { AccountConfig } from "../config/account-store.js";
 import { appendMessage } from "../conversation/history-store.js";
 import { createLogger } from "../shared/logger.js";
 import { ThreadType } from "zca-js";
-import type { ParsedMessage } from "../zalo/zalo-message-parser.js";
+import { imagePathsOf, persistBatchImages } from "../conversation/media-store.js";
+import type { IncomingImage, ParsedMessage } from "../zalo/zalo-message-parser.js";
 import { sendFacebookMessage, sendFacebookTyping } from "./facebook-api-client.js";
 import { applyFacebookGuardrail } from "./facebook-guardrail.js";
 import { checkAndIncrementUsage, getFacebookPage } from "./facebook-tenant-store.js";
@@ -84,12 +85,24 @@ export async function processFacebookMessage(params: {
 }): Promise<void> {
   const { pageId, pageAccessToken, item } = params;
   const senderPsid = item.sender.id;
-  const messageText = item.message?.text?.trim() ?? "";
+  const rawText = item.message?.text?.trim() ?? "";
 
-  log.info({ pageId, senderPsid, text: messageText }, "Bắt đầu xử lý tin nhắn từ khách Facebook Messenger");
+  // 1. Trích xuất danh sách ảnh đính kèm từ Meta webhook
+  const rawAttachments = item.message?.attachments ?? [];
+  const imageAttachments = rawAttachments.filter((att) => att.type === "image" && att.payload?.url);
+  const incomingImages: IncomingImage[] = imageAttachments.map((att) => ({
+    url: att.payload.url!,
+  }));
 
-  // Bỏ qua nếu không có nội dung chữ
-  if (!messageText) return;
+  // Bỏ qua nếu không có cả chữ lẫn ảnh
+  if (!rawText && incomingImages.length === 0) return;
+
+  const messageText = rawText || `[gửi kèm ${incomingImages.length} ảnh]`;
+
+  log.info(
+    { pageId, senderPsid, text: messageText, imagesCount: incomingImages.length },
+    "Bắt đầu xử lý tin nhắn từ khách Facebook Messenger",
+  );
 
   // Kiểm tra Human Handoff: nếu nhân viên đang trực, bot im lặng
   if (isStaffHandling(pageId, senderPsid)) {
@@ -122,41 +135,44 @@ export async function processFacebookMessage(params: {
   const account = resolveFacebookAccount(pageTenant?.agentId);
   const threadId = `fb:${pageId}:${senderPsid}`;
 
-  // Kiểm tra Guardrail 4 Lớp: lọc chào hỏi, trêu duyên bẻ lái, đếm thẻ phạt và im lặng khi spam
-  const decision = await applyFacebookGuardrail({
-    pageId,
-    senderPsid,
-    messageText,
-  });
-
-  if (decision.action === "MUTED") {
-    log.info({ pageId, senderPsid }, "Guardrail: Khách bị cấm chat do spam ngoài lề quá 3 lần - im lặng");
-    return;
-  }
-
-  if (decision.action === "REPLIED") {
-    // Bật chỉ báo đang soạn tin ngắn
-    await sendFacebookTyping({ pageAccessToken: effectiveToken, recipientPsid: senderPsid, typing: true });
-
-    // Ghi tin nhắn khách và câu trả lời vào lịch sử
-    appendMessage(account.id, threadId, {
-      role: "user",
-      content: messageText,
+  // Kiểm tra Guardrail 4 Lớp:
+  // Nếu tin nhắn CÓ ẢNH: Khách gửi ảnh menu/món/hóa đơn -> KHÔNG lọc guardrail ngoài lề mà chuyển thẳng vào Agent
+  if (incomingImages.length === 0) {
+    const decision = await applyFacebookGuardrail({
+      pageId,
+      senderPsid,
+      messageText,
     });
 
-    await sendFacebookMessage({
-      pageAccessToken: effectiveToken,
-      recipientPsid: senderPsid,
-      text: decision.replyText,
-    });
+    if (decision.action === "MUTED") {
+      log.info({ pageId, senderPsid }, "Guardrail: Khách bị cấm chat do spam ngoài lề quá 3 lần - im lặng");
+      return;
+    }
 
-    appendMessage(account.id, threadId, {
-      role: "assistant",
-      content: decision.replyText,
-    });
+    if (decision.action === "REPLIED") {
+      // Bật chỉ báo đang soạn tin ngắn
+      await sendFacebookTyping({ pageAccessToken: effectiveToken, recipientPsid: senderPsid, typing: true });
 
-    await sendFacebookTyping({ pageAccessToken: effectiveToken, recipientPsid: senderPsid, typing: false });
-    return;
+      // Ghi tin nhắn khách và câu trả lời vào lịch sử
+      appendMessage(account.id, threadId, {
+        role: "user",
+        content: messageText,
+      });
+
+      await sendFacebookMessage({
+        pageAccessToken: effectiveToken,
+        recipientPsid: senderPsid,
+        text: decision.replyText,
+      });
+
+      appendMessage(account.id, threadId, {
+        role: "assistant",
+        content: decision.replyText,
+      });
+
+      await sendFacebookTyping({ pageAccessToken: effectiveToken, recipientPsid: senderPsid, typing: false });
+      return;
+    }
   }
 
   const incomingMessage: ParsedMessage = {
@@ -167,7 +183,7 @@ export async function processFacebookMessage(params: {
     senderId: senderPsid,
     senderName: `Khách Messenger (${senderPsid.slice(-4)})`,
     text: messageText,
-    images: [],
+    images: incomingImages,
     msgId: item.message?.mid ?? `fb_${Date.now()}`,
     cliMsgId: item.message?.mid ?? `fb_${Date.now()}`,
     isSelf: false,
@@ -176,10 +192,18 @@ export async function processFacebookMessage(params: {
     rawData: item as unknown as Record<string, unknown>,
   };
 
-  // Ghi tin của khách vào lịch sử hội thoại
+  // 2. Tải ảnh về đĩa (media-store) TRƯỚC khi gọi Agent và ghi history
+  if (incomingMessage.images.length > 0) {
+    await persistBatchImages(account.id, [incomingMessage]);
+  }
+
+  const savedImagePaths = imagePathsOf(incomingMessage.images);
+
+  // Ghi tin của khách vào lịch sử hội thoại (kèm mảng đường dẫn ảnh đã tải nếu có)
   appendMessage(account.id, threadId, {
     role: "user",
     content: messageText,
+    images: savedImagePaths.length > 0 ? savedImagePaths : undefined,
   });
 
   // Bật chỉ báo đang soạn tin

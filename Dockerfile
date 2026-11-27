@@ -103,6 +103,7 @@ RUN addgroup --system --gid 1001 zalo && adduser --system --uid 1001 --ingroup z
 COPY --from=prod-deps --chown=zalo:zalo /app/node_modules ./node_modules
 COPY --from=builder --chown=zalo:zalo /app/dist ./dist
 COPY --from=builder --chown=zalo:zalo /app/web/dist ./web/dist
+COPY --chown=zalo:zalo assets ./assets
 COPY --chown=zalo:zalo package.json ./
 
 # Thư mục dữ liệu tạo sẵn và cấp quyền TRƯỚC khi đổi user: volume mount đè lên

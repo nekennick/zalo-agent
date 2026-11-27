@@ -121,4 +121,39 @@ describe("vietqr-tools", () => {
     assert.match(String(result), /thành công/);
     assert.equal(daGuiTin.length, 1);
   });
+
+  it("send_payment_qr tìm thấy theo họ tên bỏ tên đệm (Phan Dũng)", async () => {
+    const ctx = makeCtx();
+    const tool = vietQrTools.createSendPaymentQrTool(ctx);
+
+    const result = await tool.execute(
+      {
+        receiver_name: "Phan Dũng",
+        amount: 26000,
+        memo: "Vy tra tien Tra dao",
+      },
+      mockOptions,
+    );
+
+    assert.match(String(result), /thành công/);
+    assert.equal(daGuiTin.length, 1);
+  });
+
+  it("send_payment_qr từ chối và KHÔNG gửi mã QR khi người nhận không tồn tại (chặn fallback)", async () => {
+    const ctx = makeCtx();
+    const tool = vietQrTools.createSendPaymentQrTool(ctx);
+
+    const result = await tool.execute(
+      {
+        receiver_name: "Nhân Vật Hoàn Toàn Lạ",
+        amount: 50000,
+        memo: "Tra tien",
+      },
+      mockOptions,
+    ) as any;
+
+    assert.equal(result.ok, false);
+    assert.match(result.loi, /Không tìm thấy tài khoản ngân hàng của người nhận/);
+    assert.equal(daGuiTin.length, 0); // Tuyệt đối không được gửi mã QR nào!
+  });
 });

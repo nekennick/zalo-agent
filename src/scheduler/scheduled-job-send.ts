@@ -6,9 +6,11 @@
  */
 
 import { appendMessage } from "../conversation/history-store.js";
+import type { ScheduledAttachment } from "../agent/tools/tool-catalog-types.js";
 import { createLogger } from "../shared/logger.js";
 import { dinhDangNeuBat } from "../zalo/prepare-outgoing-text.js";
-import { sendReplyInParts, type ReplyResult, type ReplyTarget } from "../zalo/send-reply-in-parts.js";
+import { enqueueSend } from "../middleware/rate-limiter.js";
+import { laLoiMayChuTuChoi, sendReplyInParts, type ReplyResult, type ReplyTarget } from "../zalo/send-reply-in-parts.js";
 import {
   checkAccountAndThreadReady,
   recordProactiveSend,
@@ -89,12 +91,15 @@ export async function sendAndConclude(
    */
   now: Date,
   turnId?: number,
+  attachments?: ScheduledAttachment[],
 ): Promise<void> {
   const reply = await deliverProactively(target.threadKey, async () => {
     // Dịch markdown SÁT lúc gửi, không sớm hơn: chữ ghi vào history bên dưới
     // phải đúng bằng chữ người dùng thấy trên Zalo.
     const { text: chuGui, styles } = dinhDangNeuBat(text);
-    const r = await sendReplyInParts(target, chuGui, styles);
+    const r = attachments && attachments.length > 0
+      ? await sendAttachmentsWithCaption(target, chuGui, styles, attachments.map((a) => a.filePath))
+      : await sendReplyInParts(target, chuGui, styles);
     if (r.deliveredText) {
       try {
         appendMessage(job.accountId, job.threadId, { role: "assistant", content: r.deliveredText });
@@ -174,4 +179,44 @@ function concludePostSendBookkeepingFailed(
 function errorText(err: unknown): string | undefined {
   if (err === undefined) return undefined;
   return err instanceof Error ? err.message : String(err);
+}
+
+/**
+ * Gửi file/ảnh đính kèm qua `target.guiMotDoan` (nằm trong `deliverProactively`
+ * của scheduler). Fallback sang chữ trơn nếu Zalo từ chối styles của caption.
+ */
+async function sendAttachmentsWithCaption(
+  target: ReplyTarget,
+  caption: string,
+  styles: ReturnType<typeof dinhDangNeuBat>["styles"],
+  attachmentPaths: string[],
+): Promise<ReplyResult> {
+  const doanStyles = target.mangDinhDang === false ? undefined : styles;
+  const label = `[Gửi kèm ${attachmentPaths.length} ảnh]`;
+  const deliveredLabel = caption ? `${label}\n${caption}` : label;
+
+  try {
+    await enqueueSend(target.threadKey, async () => {
+      try {
+        return await target.guiMotDoan({
+          text: caption,
+          styles: doanStyles,
+          attachments: attachmentPaths,
+        });
+      } catch (err) {
+        if (!doanStyles?.length || !laLoiMayChuTuChoi(err)) throw err;
+        log.warn(
+          { threadId: target.threadId, soStyle: doanStyles.length, err },
+          "Zalo từ chối caption ảnh có định dạng - gửi lại dạng chữ trơn",
+        );
+        return await target.guiMotDoan({
+          text: caption,
+          attachments: attachmentPaths,
+        });
+      }
+    });
+    return { deliveredText: deliveredLabel, sentParts: 1 };
+  } catch (err) {
+    return { deliveredText: "", sentParts: 0, error: err };
+  }
 }

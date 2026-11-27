@@ -268,7 +268,7 @@ describe("lịch hẹn trên tài khoản Zalo Bot", () => {
       const scope = { account: accountStore.getAccount(ACC)!, agent };
       const keys = registry.listAvailableTools(scope, { isolated: true }).map((t) => t.key).sort();
 
-      assert.deepEqual(keys, ["get_datetime", "kb_search", "web_fetch", "web_search"]);
+      assert.deepEqual(keys, ["get_datetime", "kb_search", "read_morning_report", "web_fetch", "web_search"]);
       assert.ok(!keys.includes("schedule_task"), "job không được đẻ job");
       assert.ok(!keys.includes("get_group_info"), "getChat/getChatMember trả 404 trên Bot API");
     } finally {

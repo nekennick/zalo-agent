@@ -12,6 +12,12 @@ import type { ParsedMessage } from "../../zalo/zalo-message-parser.js";
  * action không kéo theo phải đọc/hiểu nhóm read).
  */
 
+/** File/ảnh đính kèm do tool tạo ra để Lịch hẹn gửi thay vì tool tự gọi enqueueSend */
+export type ScheduledAttachment = {
+  filePath: string;
+  cleanup?: () => Promise<void> | void;
+};
+
 /** Bối cảnh 1 lượt xử lý - tools dùng để gọi zca-js đúng account + thread */
 export type ToolContext = {
   /**
@@ -64,6 +70,11 @@ export type ToolContext = {
    * lượt đó (`runsInScheduledTurn: false`).
    */
   ghiNhanDaGui?: (noiDung: string) => void;
+  /**
+   * Đưa file/ảnh vào hàng đợi gửi của lượt Lịch hẹn (`isolated: true`) để
+   * `runAgentJob` -> `sendAndConclude` gửi đúng qua `deliverProactively` + trần ngày.
+   */
+  queueScheduledAttachment?: (item: ScheduledAttachment) => void;
 };
 
 /**

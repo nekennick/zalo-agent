@@ -16,6 +16,7 @@ before(async () => {
 });
 
 after(async () => {
+  await new Promise((r) => setTimeout(r, 600));
   (await import("../conversation/database.js")).closeDatabase();
   cleanupTestEnv(dataDir);
 });
@@ -74,5 +75,45 @@ describe("Facebook Webhook - Nhận tin & Human Handoff (POST)", () => {
 
     // Khách customer_999 phải được đánh dấu là nhân viên đang trực
     assert.equal(processor.isStaffHandling("page_123", "customer_999"), true);
+  });
+
+  it("nhận tin nhắn chỉ có ảnh (không text) và chấp nhận xử lý webhook", async () => {
+    const payload = {
+      object: "page",
+      entry: [
+        {
+          id: "page_123",
+          time: 1789000000,
+          messaging: [
+            {
+              sender: { id: "customer_888" },
+              recipient: { id: "page_123" },
+              timestamp: 1789000000,
+              message: {
+                mid: "m_image_1",
+                attachments: [
+                  {
+                    type: "image",
+                    payload: {
+                      url: "https://example.com/menu.jpg",
+                    },
+                  },
+                ],
+              },
+            },
+          ],
+        },
+      ],
+    };
+
+    const res = await app.request("/webhook/facebook", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+
+    assert.equal(res.status, 200);
+    const json = (await res.json()) as { status: string };
+    assert.equal(json.status, "EVENT_RECEIVED");
   });
 });

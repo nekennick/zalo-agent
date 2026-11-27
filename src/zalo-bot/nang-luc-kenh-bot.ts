@@ -62,6 +62,9 @@ export const TOOL_KHONG_CHAY_TREN_BOT: Record<string, LyDoKhongHoTro> = {
   get_group_info: {
     hint: "Zalo Bot API không có method đọc thông tin nhóm (getChat/getChatMember trả 404)",
   },
+  send_morning_report_infographic: {
+    hint: "Zalo Bot API chỉ gửi ảnh qua URL công khai, không nhận file tải lên",
+  },
 };
 
 export function toolChayDuocTrenBot(key: string): boolean {

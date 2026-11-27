@@ -34,7 +34,7 @@ export function taoBangVietQrBank(db: DatabaseSync): void {
       "VietinBank",
       "107001620872",
       "PHAN THANH DUNG",
-      "Dung, Thanh Dung, Chị Dung",
+      "Anh Dũng, Dũng, Phan Dũng, Thanh Dũng, Phan Thanh Dũng, Chị Dung",
     );
   }
 }

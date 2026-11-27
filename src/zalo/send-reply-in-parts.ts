@@ -57,6 +57,7 @@ export type DoanCanGui = {
   styles?: Style[];
   quote?: SendMessageQuote;
   mentions?: Mention[];
+  attachments?: string[];
 };
 
 export type ReplyTarget = {
@@ -153,13 +154,14 @@ export function duongGuiZcaJs(
   threadId: string,
   threadType: ThreadType,
 ): (doan: DoanCanGui) => Promise<unknown> {
-  return ({ text, styles, quote, mentions }) =>
+  return ({ text, styles, quote, mentions, attachments }) =>
     api.sendMessage(
       {
         msg: text,
         ...(styles && styles.length > 0 ? { styles } : {}),
         ...(quote ? { quote } : {}),
         ...(mentions && mentions.length > 0 ? { mentions } : {}),
+        ...(attachments && attachments.length > 0 ? { attachments } : {}),
       },
       threadId,
       threadType,

@@ -62,8 +62,10 @@ facebookWebhookRoutes.post("/", async (c) => {
           continue;
         }
 
-        // 2. Nếu là tin nhắn từ khách hàng gửi tới
-        if (item.message && item.message.text && pageAccessToken) {
+        // 2. Nếu là tin nhắn từ khách hàng gửi tới (chữ hoặc đính kèm ảnh/tập tin)
+        const hasText = Boolean(item.message?.text?.trim());
+        const hasAttachments = Boolean(item.message?.attachments && item.message.attachments.length > 0);
+        if (item.message && (hasText || hasAttachments) && pageAccessToken) {
           void processFacebookMessage({
             pageId,
             pageAccessToken,

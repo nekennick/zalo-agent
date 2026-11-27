@@ -163,34 +163,83 @@ function normalizeStr(s: string): string {
     .trim();
 }
 
+function stripHonorific(s: string): string {
+  return s.replace(/^(anh|chi|em|ban|bac|chu|co|di|a|c|e)\s+/i, "").trim();
+}
+
 /**
- * Tìm tài khoản ngân hàng khớp với tên/biệt danh người nhận (ví dụ "Dung", "Chị Dung", "Phan Thanh Dung").
+ * Tìm tài khoản ngân hàng khớp với tên/biệt danh người nhận (ví dụ "Dung", "Chị Dung", "Phan Dũng", "Phan Thanh Dung").
  */
 export function findVietQrAccountByKeyword(keyword: string): VietQrAccount | null {
   const q = normalizeStr(keyword);
   if (!q) return null;
 
+  const qClean = stripHonorific(q);
+  const tokens = (qClean || q).split(/\s+/).filter(Boolean);
   const accounts = listVietQrAccounts();
 
-  // 1. Khớp chính xác hoặc chứa trong nickname
+  // 1. Khớp chính xác hoặc chuỗi con liên tiếp với nickname
   for (const acc of accounts) {
     if (acc.nickname) {
-      const parts = acc.nickname.split(/[,;\n]/).map((p) => normalizeStr(p));
-      if (parts.some((p) => p && (p === q || q.includes(p) || p.includes(q)))) {
+      const parts = acc.nickname.split(/[,;\n]/).map((p) => normalizeStr(p)).filter(Boolean);
+      if (
+        parts.some(
+          (p) =>
+            p === q ||
+            (qClean && p === qClean) ||
+            (qClean && stripHonorific(p) === qClean) ||
+            q.includes(p) ||
+            p.includes(q) ||
+            (qClean && (qClean.includes(p) || p.includes(qClean))),
+        )
+      ) {
         return acc;
       }
     }
   }
 
-  // 2. Khớp theo tên chủ tài khoản
+  // 2. Khớp chuỗi con liên tiếp theo tên chủ tài khoản
   for (const acc of accounts) {
     const holderNorm = normalizeStr(acc.accountHolder);
-    if (holderNorm.includes(q) || q.includes(holderNorm)) {
+    if (
+      holderNorm.includes(q) ||
+      (qClean && holderNorm.includes(qClean)) ||
+      q.includes(holderNorm)
+    ) {
       return acc;
     }
   }
 
-  // 3. Khớp theo id
+  // 3. Khớp từ phân tách (Token matching: ví dụ "Phan Dũng" khớp "PHAN THANH DUNG")
+  if (tokens.length >= 2) {
+    for (const acc of accounts) {
+      const holderTokens = normalizeStr(acc.accountHolder).split(/\s+/).filter(Boolean);
+      if (tokens.every((t) => holderTokens.includes(t))) {
+        return acc;
+      }
+      if (acc.nickname) {
+        const parts = acc.nickname.split(/[,;\n]/).map((p) => normalizeStr(p));
+        for (const p of parts) {
+          const pTokens = p.split(/\s+/).filter(Boolean);
+          if (tokens.every((t) => pTokens.includes(t))) {
+            return acc;
+          }
+        }
+      }
+    }
+  } else if (tokens.length === 1) {
+    // Tìm theo 1 từ đơn (ví dụ "Dũng" khớp với tên gọi cuối cùng trong "PHAN THANH DUNG")
+    const singleToken = tokens[0];
+    for (const acc of accounts) {
+      const holderTokens = normalizeStr(acc.accountHolder).split(/\s+/).filter(Boolean);
+      const lastName = holderTokens[holderTokens.length - 1];
+      if (lastName === singleToken) {
+        return acc;
+      }
+    }
+  }
+
+  // 4. Khớp theo id
   const byId = accounts.find((a) => a.id.toLowerCase() === q);
   if (byId) return byId;
 

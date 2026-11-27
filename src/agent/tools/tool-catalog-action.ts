@@ -14,6 +14,7 @@ import { createTaiVideoTool } from "./tai-video-tool.js";
 import { createLookupReceiverTool } from "./lookup-receiver-tool.js";
 import { createSendPaymentQrTool } from "./vietqr-tools.js";
 import { createRecordInventoryImportTool } from "./record-inventory-import-tool.js";
+import { createMorningReportInfographicTool } from "./morning-report-infographic-tool.js";
 import type { ToolDefinition } from "./tool-catalog-types.js";
 
 /**
@@ -179,5 +180,12 @@ export const ACTION_TOOL_DEFINITIONS: ToolDefinition[] = [
     group: "action",
     runsInScheduledTurn: false,
     build: (ctx) => createRecordInventoryImportTool(ctx),
+  },
+  {
+    key: "send_morning_report_infographic",
+    label: "Gửi Infographic báo cáo sáng",
+    description: "Tạo ảnh Infographic báo cáo đóng hàng sáng (1 mẫu cố định từ morning-report.json) và gửi vào nhóm Zalo (chạy được cả trong Lịch hẹn)",
+    group: "action",
+    build: (ctx) => createMorningReportInfographicTool(ctx),
   },
 ];
